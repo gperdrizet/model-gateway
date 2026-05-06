@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      margin: 0;
+      padding: 32px 24px;
+    }
+    a { color: #60a5fa; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .wrap { max-width: 1000px; margin: 0 auto; }
+    h1 { font-size: 1.3rem; margin: 0 0 4px; color: #f8fafc; }
+    .sub { color: #64748b; font-size: 0.85rem; margin: 0 0 28px; }
+
+    /* flash */
+    .flash { padding: 10px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 0.9rem; }
+    .flash.ok  { background: #052e16; color: #86efac; border: 1px solid #166534; }
+    .flash.err { background: #450a0a; color: #fca5a5; border: 1px solid #991b1b; }
+
+    /* stats row */
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 28px; }
+    .stat { background: #1e293b; border-radius: 8px; padding: 16px 20px; }
+    .stat .label { font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+    .stat .value { font-size: 1.5rem; font-weight: 600; }
+
+    /* table */
+    .table-wrap { background: #1e293b; border-radius: 10px; overflow: hidden; margin-bottom: 28px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th { background: #0f172a; color: #94a3b8; font-weight: 500; text-align: left; padding: 10px 14px; border-bottom: 1px solid #334155; }
+    td { padding: 10px 14px; border-bottom: 1px solid #1e293b; vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #263045; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 0.75rem; }
+    .badge.trial { background: #1c3144; color: #7dd3fc; }
+    .badge.paid  { background: #14532d; color: #86efac; }
+    .badge.empty { background: #1c1917; color: #78716c; }
+
+    /* action buttons */
+    .btn { display: inline-block; padding: 5px 12px; border-radius: 6px; border: none; font-size: 0.8rem; cursor: pointer; font-family: inherit; }
+    .btn-ghost { background: transparent; color: #60a5fa; border: 1px solid #1e40af; }
+    .btn-ghost:hover { background: #1e3a5f; }
+    .btn-danger { background: transparent; color: #f87171; border: 1px solid #7f1d1d; }
+    .btn-danger:hover { background: #3b0f0f; }
+    .btn-green { background: transparent; color: #4ade80; border: 1px solid #14532d; }
+    .btn-green:hover { background: #052e16; }
+
+    /* inline form */
+    .adjust-form { display: flex; gap: 6px; align-items: center; }
+    .adjust-form input[type=number] {
+      width: 80px; padding: 4px 8px; border-radius: 6px;
+      border: 1px solid #334155; background: #0f172a; color: #e2e8f0;
+      font-size: 0.8rem;
+    }
+
+    /* search */
+    .toolbar { display: flex; gap: 10px; margin-bottom: 16px; align-items: center; }
+    .toolbar input[type=text] {
+      flex: 1; padding: 8px 12px; border-radius: 8px;
+      border: 1px solid #334155; background: #1e293b; color: #e2e8f0;
+      font-size: 0.85rem;
+    }
+    .toolbar input::placeholder { color: #475569; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Admin</h1>
+  <p class="sub">model-gateway · {{ user_count }} users · logged in via ADMIN_KEY</p>
+
+  {% if flash %}
+  <div class="flash {{ flash_type }}">{{ flash }}</div>
+  {% endif %}
+
+  <!-- Summary stats -->
+  <div class="stats">
+    <div class="stat">
+      <div class="label">Total users</div>
+      <div class="value">{{ user_count }}</div>
+    </div>
+    <div class="stat">
+      <div class="label">Active trials</div>
+      <div class="value">{{ active_trials }}</div>
+    </div>
+    <div class="stat">
+      <div class="label">Paid balance (total)</div>
+      <div class="value">{{ total_paid_fmt }}</div>
+    </div>
+    <div class="stat">
+      <div class="label">Requests (30d)</div>
+      <div class="value">{{ requests_30d }}</div>
+    </div>
+    <div class="stat">
+      <div class="label">Tokens used (30d)</div>
+      <div class="value">{{ tokens_30d_fmt }}</div>
+    </div>
+  </div>
+
+  <!-- User table -->
+  <div class="toolbar">
+    <input type="text" id="search" placeholder="Filter by email…" oninput="filterTable(this.value)">
+  </div>
+  <div class="table-wrap">
+    <table id="user-table">
+      <thead>
+        <tr>
+          <th>Email</th>
+          <th>Key prefix</th>
+          <th>Balance</th>
+          <th>Trial</th>
+          <th>30d usage</th>
+          <th>Joined</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td>{{ u.email }}</td>
+          <td><code style="font-size:0.8rem;color:#94a3b8">{{ u.prefix }}</code></td>
+          <td>
+            {% if u.balance > 0 %}
+              <span class="badge paid">{{ u.balance_fmt }}</span>
+            {% elif u.trial_remaining > 0 %}
+              <span class="badge trial">{{ u.trial_remaining_fmt }} trial</span>
+            {% else %}
+              <span class="badge empty">0</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if u.trial_remaining > 0 %}
+              {{ u.trial_remaining_fmt }} · exp {{ u.trial_expires }}
+            {% else %}
+              —
+            {% endif %}
+          </td>
+          <td>{{ u.used_30d_fmt }}</td>
+          <td style="color:#64748b;white-space:nowrap">{{ u.joined }}</td>
+          <td>
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+              <!-- Adjust tokens -->
+              <form method="post" action="/admin/adjust" class="adjust-form">
+                <input type="hidden" name="key" value="{{ admin_key }}">
+                <input type="hidden" name="user_id" value="{{ u.id }}">
+                <input type="number" name="delta" placeholder="±tokens" step="100000">
+                <button type="submit" class="btn btn-green">Adjust</button>
+              </form>
+              <!-- Delete -->
+              <form method="post" action="/admin/delete" onsubmit="return confirm('Delete {{ u.email }}?')">
+                <input type="hidden" name="key" value="{{ admin_key }}">
+                <input type="hidden" name="user_id" value="{{ u.id }}">
+                <button type="submit" class="btn btn-danger">Delete</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Add tokens manually -->
+  <div style="background:#1e293b;border-radius:10px;padding:20px 24px;">
+    <p style="margin:0 0 12px;font-weight:600;font-size:0.9rem;">Add new trial grant</p>
+    <form method="post" action="/admin/grant" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+      <input type="hidden" name="key" value="{{ admin_key }}">
+      <div>
+        <label style="font-size:0.8rem;color:#94a3b8;display:block;margin-bottom:4px">Email</label>
+        <input type="email" name="email" required placeholder="user@example.com"
+          style="padding:7px 12px;border-radius:6px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:0.85rem;width:240px">
+      </div>
+      <div>
+        <label style="font-size:0.8rem;color:#94a3b8;display:block;margin-bottom:4px">Tokens</label>
+        <input type="number" name="tokens" value="500000" min="1" step="100000"
+          style="padding:7px 12px;border-radius:6px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:0.85rem;width:130px">
+      </div>
+      <div>
+        <label style="font-size:0.8rem;color:#94a3b8;display:block;margin-bottom:4px">Expires (days)</label>
+        <input type="number" name="days" value="30" min="1"
+          style="padding:7px 12px;border-radius:6px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:0.85rem;width:90px">
+      </div>
+      <button type="submit" class="btn btn-green" style="padding:8px 16px">Grant</button>
+    </form>
+  </div>
+</div>
+
+<script>
+function filterTable(q) {
+  q = q.toLowerCase();
+  document.querySelectorAll('#user-table tbody tr').forEach(row => {
+    row.style.display = row.cells[0].textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+</script>
+</body>
+</html>

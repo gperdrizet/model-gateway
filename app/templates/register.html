@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Get your free API key</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #f9fafb;
+      color: #111;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      padding: 48px 40px;
+      max-width: 440px;
+      width: 100%;
+    }
+    h1 { font-size: 1.5rem; margin: 0 0 8px; }
+    .sub { color: #555; margin: 0 0 32px; line-height: 1.5; }
+    label { display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 6px; }
+    input[type="email"] {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    input[type="email"]:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+    button {
+      margin-top: 16px;
+      width: 100%;
+      padding: 11px;
+      background: #111;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    button:hover { background: #2563eb; }
+    .note { font-size: 0.8rem; color: #888; margin-top: 16px; line-height: 1.5; }
+    {% if error %}
+    .error { background: #fef2f2; color: #b91c1c; border-radius: 8px; padding: 10px 14px; margin-bottom: 20px; font-size: 0.9rem; }
+    {% endif %}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Get your free API key</h1>
+    <p class="sub">
+      {{ trial_tokens_fmt }} free tokens, no credit card required.<br>
+      Use them within {{ trial_expiry_days }} days.
+    </p>
+
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" action="/register">
+      <label for="email">Email address</label>
+      <input type="email" id="email" name="email" placeholder="you@example.com" required autofocus>
+      <button type="submit">Send my key</button>
+    </form>
+
+    <p class="note">
+      We'll email your API key immediately. No password, no dashboard account —
+      just the key. Your prompts are never logged.
+    </p>
+  </div>
+</body>
+</html>

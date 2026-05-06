@@ -1,0 +1,77 @@
+# BTCPay Server — run separately on gatekeeper.
+# This is a standalone stack, not part of the main gateway compose.
+#
+# First-time setup:
+#   docker compose -f docker-compose.btcpay.yml up -d
+#   Open http://100.64.0.1:23000 to complete setup wizard.
+#   Then fill BTCPAY_* vars in the main .env and restart the gateway.
+#
+# Lightning Network requires a synced Bitcoin node — initial sync takes 2-4 days.
+# For on-chain Bitcoin only (no Lightning), comment out the lnd service.
+
+services:
+  btcpay:
+    image: btcpayserver/btcpayserver:2.0
+    restart: unless-stopped
+    ports:
+      - "100.64.0.1:23000:3003"   # tailnet-only — not public
+    environment:
+      BTCPAY_POSTGRES: User ID=btcpay;Host=btcpay-db;Port=5432;Database=btcpay
+      BTCPAY_NETWORK: mainnet
+      BTCPAY_EXPLORERNODE: http://nbxplorer:32838
+      BTCPAY_ROOTPATH: /
+      BTCPAY_EXTERNALURL: https://btcpay.perdrizet.org   # if you want a public URL; else leave blank
+    depends_on:
+      - btcpay-db
+      - nbxplorer
+    volumes:
+      - btcpay-data:/datadir
+
+  nbxplorer:
+    image: nicolasdorier/nbxplorer:2.5.17
+    restart: unless-stopped
+    environment:
+      NBXPLORER_NETWORK: mainnet
+      NBXPLORER_BIND: 0.0.0.0:32838
+      NBXPLORER_POSTGRES: User ID=btcpay;Host=btcpay-db;Port=5432;Database=nbxplorer
+      NBXPLORER_BITCOINNODE: btcd:8333
+    depends_on:
+      - btcpay-db
+      - btcd
+    volumes:
+      - nbxplorer-data:/datadir
+
+  btcd:
+    image: btcpayserver/bitcoin:27.0
+    restart: unless-stopped
+    environment:
+      BITCOIN_NETWORK: mainnet
+      BITCOIN_EXTRA_ARGS: |
+        rpcuser=btcpay
+        rpcpassword=btcpay
+        rpcallowip=0.0.0.0/0
+        rpcbind=0.0.0.0
+        txindex=1
+        whitelist=0.0.0.0/0
+    volumes:
+      - bitcoin-data:/data
+
+  btcpay-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: btcpay
+      POSTGRES_PASSWORD: btcpay
+    volumes:
+      - btcpay-pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U btcpay"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  btcpay-data:
+  nbxplorer-data:
+  bitcoin-data:
+  btcpay-pg-data:

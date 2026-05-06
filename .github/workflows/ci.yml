@@ -1,0 +1,63 @@
+name: CI + Staging Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Run tests
+        run: pytest tests/ -v
+
+  deploy-staging:
+    needs: test
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Deploy to gatekeeper (staging)
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.GATEKEEPER_HOST }}
+          username: ${{ secrets.GATEKEEPER_USER }}
+          key: ${{ secrets.GATEKEEPER_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            DEPLOY_DIR=/opt/model-gateway-staging
+
+            # Clone on first run, pull on subsequent runs
+            if [ ! -d "$DEPLOY_DIR/.git" ]; then
+              git clone https://github.com/${{ github.repository }}.git "$DEPLOY_DIR"
+            else
+              git -C "$DEPLOY_DIR" pull --ff-only
+            fi
+
+            cd "$DEPLOY_DIR"
+
+            # Copy env file if it exists (managed manually on server)
+            [ -f /opt/model-gateway-staging.env ] && cp /opt/model-gateway-staging.env .env
+
+            COMPOSE_PROJECT_NAME=staging docker compose \
+              -f docker-compose.yml \
+              -f docker-compose.staging.yml \
+              up --build -d
+
+            # Smoke test
+            sleep 5
+            curl -fsS http://127.0.0.1:8505/health | grep '"status":"ok"'
+            echo "Staging deploy OK"

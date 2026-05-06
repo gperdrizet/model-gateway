@@ -1,0 +1,57 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: gateway
+      POSTGRES_USER: gateway
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gateway -d gateway"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  gateway:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8503:8503"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://gateway:${POSTGRES_PASSWORD}@db:5432/gateway
+      LLAMA_BASE_URL: ${LLAMA_BASE_URL}
+      LLAMA_API_KEY: ${LLAMA_API_KEY}
+      GATEWAY_SECRET_KEY: ${GATEWAY_SECRET_KEY}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_FROM: ${SMTP_FROM}
+      TRIAL_TOKENS: ${TRIAL_TOKENS:-500000}
+      TRIAL_EXPIRY_DAYS: ${TRIAL_EXPIRY_DAYS:-14}
+      BASE_URL: ${BASE_URL}
+      ADMIN_KEY: ${ADMIN_KEY}
+    extra_hosts:
+      - "host-gateway:host-gateway"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  adminer:
+    image: adminer:4
+    restart: unless-stopped
+    ports:
+      - "${ADMINER_BIND_HOST:-127.0.0.1}:8504:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: db
+      ADMINER_DESIGN: dracula
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:

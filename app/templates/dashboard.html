@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #f9fafb;
+      color: #111;
+      margin: 0;
+      padding: 32px 24px;
+    }
+    .wrap { max-width: 720px; margin: 0 auto; }
+    h1 { font-size: 1.4rem; margin: 0 0 4px; }
+    .email { color: #666; font-size: 0.9rem; margin: 0 0 32px; }
+
+    /* --- stat cards --- */
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 32px; }
+    .stat {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+      padding: 20px 24px;
+    }
+    .stat .label { font-size: 0.8rem; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+    .stat .value { font-size: 1.6rem; font-weight: 600; line-height: 1; }
+    .stat .sub { font-size: 0.8rem; color: #aaa; margin-top: 4px; }
+    .stat.warn .value { color: #d97706; }
+    .stat.danger .value { color: #dc2626; }
+
+    /* --- trial banner --- */
+    .trial-banner {
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: 10px;
+      padding: 14px 20px;
+      margin-bottom: 32px;
+      font-size: 0.9rem;
+      color: #92400e;
+    }
+    .trial-banner strong { color: #78350f; }
+
+    /* --- usage chart --- */
+    .section-title { font-size: 1rem; font-weight: 600; margin: 0 0 16px; }
+    .chart-wrap {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+      padding: 24px;
+      margin-bottom: 32px;
+    }
+    .bar-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+      font-size: 0.82rem;
+    }
+    .bar-date { width: 80px; color: #888; flex-shrink: 0; text-align: right; }
+    .bar-track { flex: 1; background: #f3f4f6; border-radius: 4px; height: 18px; overflow: hidden; }
+    .bar-fill { height: 100%; background: #2563eb; border-radius: 4px; transition: width 0.3s; }
+    .bar-fill.output { background: #7c3aed; }
+    .bar-label { width: 80px; color: #555; flex-shrink: 0; }
+    .bar-legend { display: flex; gap: 20px; margin-bottom: 14px; font-size: 0.8rem; color: #666; }
+    .dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; }
+    .dot.input { background: #2563eb; }
+    .dot.output { background: #7c3aed; }
+    .empty { color: #aaa; font-size: 0.9rem; padding: 16px 0; }
+
+    /* --- buy section --- */
+    .buy-wrap {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+      padding: 24px;
+      margin-bottom: 32px;
+    }
+    .packs { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-top: 16px; }
+    .pack {
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .pack:hover { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+    .pack .tokens { font-size: 1.1rem; font-weight: 600; }
+    .pack .price { color: #2563eb; font-size: 0.9rem; margin: 4px 0 12px; }
+    .pack .cpp { color: #aaa; font-size: 0.75rem; }
+    .pack-btn {
+      display: block;
+      width: 100%;
+      padding: 8px;
+      background: #111;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.15s;
+    }
+    .pack-btn:hover { background: #2563eb; }
+    .pay-methods { font-size: 0.8rem; color: #aaa; margin-top: 12px; }
+
+    /* --- key display --- */
+    .key-wrap {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+      padding: 24px;
+    }
+    .key-row { display: flex; align-items: center; gap: 10px; }
+    .key-val {
+      font-family: monospace;
+      font-size: 0.95rem;
+      background: #f4f4f5;
+      border-radius: 6px;
+      padding: 8px 12px;
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .copy-btn {
+      padding: 8px 14px;
+      background: #f3f4f6;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .copy-btn:hover { background: #e5e7eb; }
+    .key-note { font-size: 0.8rem; color: #aaa; margin-top: 8px; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Dashboard</h1>
+  <p class="email">{{ email }}</p>
+
+  {# Payment success banner #}
+  {% if payment_success %}
+  <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:14px 20px;margin-bottom:24px;font-size:0.9rem;color:#166534;">
+    <strong>Payment received!</strong> Your tokens have been added to your balance.
+  </div>
+  {% endif %}
+
+  {# Trial banner if any active trial tokens #}
+  {% if trial_remaining > 0 %}
+  <div class="trial-banner">
+    <strong>Trial active</strong> — {{ trial_remaining_fmt }} tokens remaining,
+    expires <strong>{{ trial_expires }}</strong>.
+    {% if trial_days_left <= 3 %}Expiring soon! {% endif %}
+    <a href="#buy" style="color:#92400e;">Buy tokens</a> to keep going after your trial ends.
+  </div>
+  {% endif %}
+
+  {# Stat cards #}
+  <div class="stats">
+    <div class="stat {% if total_balance < 100000 %}{{ 'danger' if total_balance == 0 else 'warn' }}{% endif %}">
+      <div class="label">Available tokens</div>
+      <div class="value">{{ total_balance_fmt }}</div>
+      <div class="sub">paid + trial</div>
+    </div>
+    <div class="stat">
+      <div class="label">Used (30 days)</div>
+      <div class="value">{{ used_30d_fmt }}</div>
+      <div class="sub">{{ used_30d_input_fmt }} in · {{ used_30d_output_fmt }} out</div>
+    </div>
+    <div class="stat">
+      <div class="label">Requests (30 days)</div>
+      <div class="value">{{ request_count_30d }}</div>
+    </div>
+  </div>
+
+  {# Usage chart #}
+  <div class="chart-wrap">
+    <p class="section-title">Daily usage — last 30 days</p>
+    {% if daily_usage %}
+    <div class="bar-legend">
+      <span><span class="dot input"></span>Input</span>
+      <span><span class="dot output"></span>Output</span>
+    </div>
+    {% for row in daily_usage %}
+    <div class="bar-row">
+      <span class="bar-date">{{ row.date }}</span>
+      <div class="bar-track">
+        <div class="bar-fill" style="width: {{ row.input_pct }}%"></div>
+      </div>
+      <div class="bar-track" style="max-width: 120px;">
+        <div class="bar-fill output" style="width: {{ row.output_pct }}%"></div>
+      </div>
+      <span class="bar-label">{{ row.total_fmt }}</span>
+    </div>
+    {% endfor %}
+    {% else %}
+    <p class="empty">No usage yet. Make your first request!</p>
+    {% endif %}
+  </div>
+
+  {# Buy tokens #}
+  <div class="buy-wrap" id="buy">
+    <p class="section-title">Buy tokens</p>
+    <div class="packs">
+      {% for pack in packs %}
+      <div class="pack">
+        <div class="tokens">{{ pack.label }}</div>
+        <div class="price">${{ pack.price }}</div>
+        <div class="cpp">${{ pack.cpp }}/1M tokens</div>
+        <form method="get" action="/checkout" style="margin:0;display:flex;gap:6px;flex-wrap:wrap">
+          <input type="hidden" name="pack" value="{{ pack.id }}">
+          <input type="hidden" name="key" value="{{ api_key }}">
+          <button type="submit" name="method" value="stripe" class="pack-btn" style="flex:1">Card</button>
+          <button type="submit" name="method" value="btcpay" class="pack-btn" style="flex:1;background:#f7931a;color:#fff">₿ BTC</button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+    <p class="pay-methods">Accepts card (Stripe) · Bitcoin · Ethereum</p>
+  </div>
+
+  {# API key display #}
+  <div class="key-wrap">
+    <p class="section-title">Your API key</p>
+    <div class="key-row">
+      <span class="key-val">{{ api_key_prefix }}••••••••••••••••••••••••</span>
+      <button class="copy-btn" onclick="copyKey()">Copy prefix</button>
+    </div>
+    <p class="key-note">
+      Your full key was shown once when you registered. If you've lost it,
+      <a href="/register">register again</a> with the same email to get a new one.
+    </p>
+  </div>
+</div>
+
+<script>
+function copyKey() {
+  navigator.clipboard.writeText("{{ api_key_prefix }}").then(() => {
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy prefix', 1500);
+  });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+# Staging overlay — use with:
+#   COMPOSE_PROJECT_NAME=staging docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d
+services:
+  gateway:
+    ports:
+      - "127.0.0.1:8505:8503"
+
+  adminer:
+    ports:
+      - "127.0.0.1:8506:8080"

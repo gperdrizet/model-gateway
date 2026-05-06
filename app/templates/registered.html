@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Check your email</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #f9fafb;
+      color: #111;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      padding: 48px 40px;
+      max-width: 440px;
+      width: 100%;
+      text-align: center;
+    }
+    .icon { font-size: 3rem; margin-bottom: 16px; }
+    h1 { font-size: 1.5rem; margin: 0 0 12px; }
+    p { color: #555; line-height: 1.6; margin: 0 0 24px; }
+    .note { font-size: 0.8rem; color: #888; margin-top: 24px; }
+    a { color: #2563eb; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">✉️</div>
+    <h1>Check your email</h1>
+    <p>
+      We've sent your API key to <strong>{{ email }}</strong>.<br>
+      It should arrive within a minute.
+    </p>
+    <p>
+      Your key comes with <strong>{{ trial_tokens_fmt }} free tokens</strong>
+      — use them within <strong>{{ trial_expiry_days }} days</strong>.
+    </p>
+    <p class="note">
+      Didn't get it? Check your spam folder, or
+      <a href="/register">register again</a> with the same address.
+    </p>
+  </div>
+</body>
+</html>
