@@ -95,7 +95,21 @@ Staging `.env` is the same but with `GATEWAY_PORT=8505`, `ADMINER_PORT=8506`, an
 
 ## CI/CD
 
-### On every push to `main`
+### Branches
+
+- **`dev`** — active development branch. All work happens here.
+- **`main`** — production-ready code only. Protected — direct pushes are blocked.
+
+### Workflow
+
+1. Work on `dev`, commit and push changes
+2. Open a pull request `dev → main`
+3. GitHub Actions runs the test suite automatically on the PR
+4. Branch protection blocks merge until all tests pass
+5. Merge the PR — staging deploy triggers automatically
+6. Verify staging at port `8505`, then trigger production deploy manually
+
+### On every push to `main` (after PR merge)
 
 1. GitHub Actions runs the test suite (`pytest tests/ -v`)
 2. If tests pass, SSHs to gatekeeper and deploys to staging at port `8505`
@@ -103,9 +117,13 @@ Staging `.env` is the same but with `GATEWAY_PORT=8505`, `ADMINER_PORT=8506`, an
 
 ### Production deploy
 
-Manual trigger only — go to **Actions → Deploy to Production → Run workflow**, type `deploy` to confirm.
+Manual trigger only — go to **Actions → Deploy to Production → Run workflow**, enter a version number (e.g. `1.0.0`) and type `deploy` to confirm.
 
-The workflow SSHs to gatekeeper, pulls the latest commit into `/opt/model-gateway/`, and runs `docker compose up --build -d`.
+The workflow:
+1. SSHs to gatekeeper, pulls the latest commit into `/opt/model-gateway/`
+2. Runs `docker compose up --build -d`
+3. Smoke tests the health endpoint
+4. Tags the commit as `v<version>` and creates a GitHub release with auto-generated notes
 
 ### Required GitHub secrets
 
