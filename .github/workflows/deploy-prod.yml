@@ -3,10 +3,16 @@ name: Deploy to Production
 on:
   workflow_dispatch:
     inputs:
+      version:
+        description: "Version to release (e.g. 1.2.3)"
+        required: true
       confirm:
         description: "Type 'deploy' to confirm production deployment"
         required: true
         default: ""
+
+permissions:
+  contents: write   # needed to create tags and releases
 
 jobs:
   guard:
@@ -24,6 +30,8 @@ jobs:
     runs-on: ubuntu-latest
     environment: production      # requires manual approval in GitHub → Settings → Environments
     steps:
+      - uses: actions/checkout@v4
+
       - name: Deploy to gatekeeper (production)
         env:
           SSH_KEY: ${{ secrets.GATEKEEPER_SSH_KEY }}
@@ -58,3 +66,15 @@ jobs:
           REMOTE
 
           rm -f "$KEY_FILE"
+
+      - name: Tag and create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="v${{ github.event.inputs.version }}"
+          git tag "$VERSION"
+          git push origin "$VERSION"
+          gh release create "$VERSION" \
+            --title "Release $VERSION" \
+            --generate-notes
+
