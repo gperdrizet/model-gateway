@@ -31,34 +31,44 @@ jobs:
     environment: staging
     steps:
       - name: Deploy to gatekeeper (staging)
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.GATEKEEPER_HOST }}
-          port: 44441
-          username: ${{ secrets.GATEKEEPER_USER }}
-          key: ${{ secrets.GATEKEEPER_SSH_KEY }}
-          script: |
-            set -euo pipefail
-            DEPLOY_DIR=/opt/model-gateway-staging
+        env:
+          SSH_KEY: ${{ secrets.GATEKEEPER_SSH_KEY }}
+          HOST: ${{ secrets.GATEKEEPER_HOST }}
+          USER: ${{ secrets.GATEKEEPER_USER }}
+        run: |
+          # Write key to temp file with strict permissions
+          KEY_FILE=$(mktemp)
+          chmod 600 "$KEY_FILE"
+          echo "$SSH_KEY" > "$KEY_FILE"
 
-            # Clone on first run, pull on subsequent runs
-            if [ ! -d "$DEPLOY_DIR/.git" ]; then
-              git clone https://github.com/${{ github.repository }}.git "$DEPLOY_DIR"
-            else
-              git -C "$DEPLOY_DIR" pull --ff-only
-            fi
+          ssh_cmd() {
+            ssh -i "$KEY_FILE" \
+              -p 44441 \
+              -o StrictHostKeyChecking=no \
+              -o BatchMode=yes \
+              "$USER@$HOST" "$@"
+          }
 
-            cd "$DEPLOY_DIR"
+          ssh_cmd bash -s << 'REMOTE'
+          set -euo pipefail
+          DEPLOY_DIR=/opt/model-gateway-staging
 
-            # Copy env file if it exists (managed manually on server)
-            [ -f /opt/model-gateway-staging.env ] && cp /opt/model-gateway-staging.env .env
+          if [ ! -d "$DEPLOY_DIR/.git" ]; then
+            git clone https://github.com/gperdrizet/model-gateway.git "$DEPLOY_DIR"
+          else
+            git -C "$DEPLOY_DIR" pull --ff-only
+          fi
 
-            COMPOSE_PROJECT_NAME=staging docker compose \
-              -f docker-compose.yml \
-              -f docker-compose.staging.yml \
-              up --build -d
+          cd "$DEPLOY_DIR"
 
-            # Smoke test
-            sleep 15
-            curl -fsS http://127.0.0.1:8505/health | grep '"status":"ok"'
-            echo "Staging deploy OK"
+          COMPOSE_PROJECT_NAME=staging docker compose \
+            -f docker-compose.yml \
+            -f docker-compose.staging.yml \
+            up --build -d
+
+          sleep 15
+          curl -fsS http://127.0.0.1:8505/health | grep '"status":"ok"'
+          echo "Staging deploy OK"
+          REMOTE
+
+          rm -f "$KEY_FILE"

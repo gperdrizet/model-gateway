@@ -25,29 +25,36 @@ jobs:
     environment: production      # requires manual approval in GitHub → Settings → Environments
     steps:
       - name: Deploy to gatekeeper (production)
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.GATEKEEPER_HOST }}
-          port: 44441
-          username: ${{ secrets.GATEKEEPER_USER }}
-          key: ${{ secrets.GATEKEEPER_SSH_KEY }}
-          script: |
-            set -euo pipefail
-            DEPLOY_DIR=/opt/model-gateway
+        env:
+          SSH_KEY: ${{ secrets.GATEKEEPER_SSH_KEY }}
+          HOST: ${{ secrets.GATEKEEPER_HOST }}
+          USER: ${{ secrets.GATEKEEPER_USER }}
+        run: |
+          KEY_FILE=$(mktemp)
+          chmod 600 "$KEY_FILE"
+          echo "$SSH_KEY" > "$KEY_FILE"
 
-            if [ ! -d "$DEPLOY_DIR/.git" ]; then
-              git clone https://github.com/${{ github.repository }}.git "$DEPLOY_DIR"
-            else
-              git -C "$DEPLOY_DIR" pull --ff-only
-            fi
+          ssh -i "$KEY_FILE" \
+            -p 44441 \
+            -o StrictHostKeyChecking=no \
+            -o BatchMode=yes \
+            "$USER@$HOST" bash -s << 'REMOTE'
+          set -euo pipefail
+          DEPLOY_DIR=/opt/model-gateway
 
-            cd "$DEPLOY_DIR"
+          if [ ! -d "$DEPLOY_DIR/.git" ]; then
+            git clone https://github.com/gperdrizet/model-gateway.git "$DEPLOY_DIR"
+          else
+            git -C "$DEPLOY_DIR" pull --ff-only
+          fi
 
-            [ -f /opt/model-gateway.env ] && cp /opt/model-gateway.env .env
+          cd "$DEPLOY_DIR"
 
-            docker compose up --build -d
+          docker compose up --build -d
 
-            # Smoke test via nginx (or direct if nginx not yet wired)
-            sleep 8
-            curl -fsS http://127.0.0.1:8503/health | grep '"status":"ok"'
-            echo "Production deploy OK"
+          sleep 8
+          curl -fsS http://127.0.0.1:8503/health | grep '"status":"ok"'
+          echo "Production deploy OK"
+          REMOTE
+
+          rm -f "$KEY_FILE"
