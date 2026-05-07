@@ -11,24 +11,24 @@
 
 An authenticated, metered API gateway for llama-server.
 
-> **Model backend**: [gperdrizet/llama.cpp](https://github.com/gperdrizet/llama.cpp) — llama-server running on a dedicated model server with a Tesla P100 GPU
+> **Model backend**: [gperdrizet/llama.cpp](https://github.com/gperdrizet/llama.cpp), llama-server running on a dedicated model server with a Tesla P100 GPU
 
 Sits in front of a running llama.cpp instance and adds user registration, token-based billing, and an admin panel.
 
 ## How it works
 
 - Users register at `/register` and receive a trial allocation (500k tokens, 14 days)
-- API calls are made to `/v1/...` with a Bearer token — compatible with the OpenAI client SDK
+- API calls are made to `/v1/...` with a Bearer token, compatible with the OpenAI client SDK
 - Each request deducts tokens from the user's balance; requests are rejected with 402 when exhausted
 - Users can top up via Stripe (card) or BTCPay Server (Bitcoin)
 - All usage is recorded for metering and display on the dashboard
 
 ## Stack
 
-- **FastAPI** + uvicorn — API server
-- **PostgreSQL** — user accounts, token balances, usage events, purchases
-- **Docker Compose** — gateway + db + adminer
-- **nginx** — TLS termination and reverse proxy on the gateway server
+- **FastAPI** + uvicorn: API server
+- **PostgreSQL**: user accounts, token balances, usage events, purchases
+- **Docker Compose**: gateway + db + adminer
+- **nginx**: TLS termination and reverse proxy on the gateway server
 
 ---
 
@@ -70,7 +70,7 @@ docker compose up --build
 pytest tests/ -v
 ```
 
-Tests use an in-memory SQLite database — no Docker required. All 17 tests should pass.
+Tests use an in-memory SQLite database; no Docker required. All 17 tests should pass.
 
 ---
 
@@ -78,8 +78,8 @@ Tests use an in-memory SQLite database — no Docker required. All 17 tests shou
 
 ### Infrastructure
 
-- **Model server** — runs llama-server on `:8502`, accessible over a private WireGuard tunnel
-- **Gateway server** — VPS running nginx + Docker; model-gateway runs here behind nginx
+- **Model server**: runs llama-server on `:8502`, accessible over a private WireGuard tunnel
+- **Gateway server**: VPS running nginx + Docker; model-gateway runs here behind nginx
 
 ### Production stack on the gateway server
 
@@ -110,8 +110,8 @@ Staging `.env` is the same but with `GATEWAY_PORT=8505`, `ADMINER_PORT=8506`, an
 
 ### Branches
 
-- **`dev`** — active development branch. All work happens here.
-- **`main`** — production-ready code only. Protected — direct pushes are blocked.
+- **`dev`**: active development branch. All work happens here.
+- **`main`**: production-ready code only. Protected; direct pushes are blocked.
 
 ### Workflow
 
@@ -119,7 +119,7 @@ Staging `.env` is the same but with `GATEWAY_PORT=8505`, `ADMINER_PORT=8506`, an
 2. Open a pull request `dev → main`
 3. GitHub Actions runs the test suite automatically on the PR
 4. Branch protection blocks merge until all tests pass
-5. Merge the PR — staging deploy triggers automatically
+5. Merge the PR; staging deploy triggers automatically
 6. Verify staging at port `8505`, then trigger production deploy manually
 
 ### On every push to `main` (after PR merge)
@@ -130,7 +130,7 @@ Staging `.env` is the same but with `GATEWAY_PORT=8505`, `ADMINER_PORT=8506`, an
 
 ### Production deploy
 
-Manual trigger only — go to **Actions → Deploy to Production → Run workflow**, enter a version number (e.g. `1.0.0`) and type `deploy` to confirm.
+Manual trigger only: go to **Actions → Deploy to Production → Run workflow**, enter a version number (e.g. `1.0.0`) and type `deploy` to confirm.
 
 The workflow:
 1. SSHs to the gateway server, pulls the latest commit into `/opt/model-gateway/`
@@ -160,22 +160,22 @@ ssh-keygen -t ed25519 -C "github-actions-deploy" -f ~/.ssh/github_deploy -N ""
 The admin panel is at `/admin?key=<ADMIN_KEY>`.
 
 Access is restricted to two layers:
-1. **`ADMIN_KEY`** — must match the `ADMIN_KEY` env var (compared in constant time)
-2. **IP CIDR check** — request must come from the private WireGuard/tailnet range, localhost, or Docker bridge. Configured via `ADMIN_ALLOWED_CIDRS` in `.env`.
+1. **`ADMIN_KEY`**: must match the `ADMIN_KEY` env var (compared in constant time)
+2. **IP CIDR check**: request must come from the private WireGuard/tailnet range, localhost, or Docker bridge. Configured via `ADMIN_ALLOWED_CIDRS` in `.env`.
 
 From outside the private network, `/admin` returns 403 regardless of key.
 
 ### Admin panel features
 
-- View all users — email, key prefix, token balance, trial status, 30-day usage, join date
-- **Adjust tokens** — add or subtract tokens from any user's paid balance (positive or negative delta)
-- **Grant trial** — give a user a new trial allocation (tokens + days)
-- **Delete user** — permanently removes the user and all associated records
+- View all users: email, key prefix, token balance, trial status, 30-day usage, join date
+- **Adjust tokens**: add or subtract tokens from any user's paid balance (positive or negative delta)
+- **Grant trial**: give a user a new trial allocation (tokens + days)
+- **Delete user**: permanently removes the user and all associated records
 - Email filter search box for finding users quickly
 
 ### Adminer (database GUI)
 
-Adminer runs at port `8504` (production) or `8506` (staging), bound to the private WireGuard/tailnet IP on the gateway server — not accessible from the public internet.
+Adminer runs at port `8504` (production) or `8506` (staging), bound to the private WireGuard/tailnet IP on the gateway server; not accessible from the public internet.
 
 Access from a machine on the private network:
 ```
