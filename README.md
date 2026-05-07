@@ -1,7 +1,8 @@
 # model-gateway
 
-[![CI](https://github.com/gperdrizet/model-gateway/actions/workflows/ci.yml/badge.svg)](https://github.com/gperdrizet/model-gateway/actions/workflows/ci.yml)
-[![Deploy to Production](https://github.com/gperdrizet/model-gateway/actions/workflows/deploy-prod.yml/badge.svg)](https://github.com/gperdrizet/model-gateway/actions/workflows/deploy-prod.yml)
+[![Tests](https://github.com/gperdrizet/model-gateway/actions/workflows/test.yml/badge.svg)](https://github.com/gperdrizet/model-gateway/actions/workflows/test.yml)
+[![Deploy Staging](https://github.com/gperdrizet/model-gateway/actions/workflows/deploy-staging.yml/badge.svg)](https://github.com/gperdrizet/model-gateway/actions/workflows/deploy-staging.yml)
+[![Deploy Production](https://github.com/gperdrizet/model-gateway/actions/workflows/deploy-prod.yml/badge.svg)](https://github.com/gperdrizet/model-gateway/actions/workflows/deploy-prod.yml)
 [![Python](https://img.shields.io/badge/python-3.12-blue?logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
