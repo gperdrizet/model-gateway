@@ -3,6 +3,8 @@ name: CI + Staging Deploy
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
   test:
@@ -26,6 +28,7 @@ jobs:
         run: pytest tests/ -v
 
   deploy-staging:
+    if: github.event_name == 'push'   # only deploy on merge, not on PRs
     needs: test
     runs-on: ubuntu-latest
     environment: staging
