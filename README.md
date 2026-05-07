@@ -1,6 +1,16 @@
 # model-gateway
 
-An authenticated, metered API gateway for llama-server. Sits in front of a running llama.cpp instance and adds user registration, token-based billing, and an admin panel.
+[![CI](https://github.com/gperdrizet/model-gateway/actions/workflows/ci.yml/badge.svg)](https://github.com/gperdrizet/model-gateway/actions/workflows/ci.yml)
+[![Deploy to Production](https://github.com/gperdrizet/model-gateway/actions/workflows/deploy-prod.yml/badge.svg)](https://github.com/gperdrizet/model-gateway/actions/workflows/deploy-prod.yml)
+[![Python](https://img.shields.io/badge/python-3.12-blue?logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Docker](https://img.shields.io/badge/Docker-compose-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
+An authenticated, metered API gateway for llama-server.
+
+> **Model backend**: [gperdrizet/llama.cpp](https://github.com/gperdrizet/llama.cpp) — llama-server running on a Tesla P100 on `pyrite` Sits in front of a running llama.cpp instance and adds user registration, token-based billing, and an admin panel.
 
 ## How it works
 
