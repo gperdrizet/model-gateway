@@ -1,6 +1,16 @@
 # model-gateway
 
-An authenticated, metered API gateway for llama-server. Sits in front of a running llama.cpp instance and adds user registration, token-based billing, and an admin panel.
+[![CI](https://github.com/gperdrizet/model-gateway/actions/workflows/ci.yml/badge.svg)](https://github.com/gperdrizet/model-gateway/actions/workflows/ci.yml)
+[![Deploy to Production](https://github.com/gperdrizet/model-gateway/actions/workflows/deploy-prod.yml/badge.svg)](https://github.com/gperdrizet/model-gateway/actions/workflows/deploy-prod.yml)
+[![Python](https://img.shields.io/badge/python-3.12-blue?logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Docker](https://img.shields.io/badge/Docker-compose-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
+An authenticated, metered API gateway for llama-server.
+
+> **Model backend**: [gperdrizet/llama.cpp](https://github.com/gperdrizet/llama.cpp) — llama-server running on a Tesla P100 on `pyrite` Sits in front of a running llama.cpp instance and adds user registration, token-based billing, and an admin panel.
 
 ## How it works
 
@@ -95,7 +105,21 @@ Staging `.env` is the same but with `GATEWAY_PORT=8505`, `ADMINER_PORT=8506`, an
 
 ## CI/CD
 
-### On every push to `main`
+### Branches
+
+- **`dev`** — active development branch. All work happens here.
+- **`main`** — production-ready code only. Protected — direct pushes are blocked.
+
+### Workflow
+
+1. Work on `dev`, commit and push changes
+2. Open a pull request `dev → main`
+3. GitHub Actions runs the test suite automatically on the PR
+4. Branch protection blocks merge until all tests pass
+5. Merge the PR — staging deploy triggers automatically
+6. Verify staging at port `8505`, then trigger production deploy manually
+
+### On every push to `main` (after PR merge)
 
 1. GitHub Actions runs the test suite (`pytest tests/ -v`)
 2. If tests pass, SSHs to gatekeeper and deploys to staging at port `8505`
@@ -103,9 +127,13 @@ Staging `.env` is the same but with `GATEWAY_PORT=8505`, `ADMINER_PORT=8506`, an
 
 ### Production deploy
 
-Manual trigger only — go to **Actions → Deploy to Production → Run workflow**, type `deploy` to confirm.
+Manual trigger only — go to **Actions → Deploy to Production → Run workflow**, enter a version number (e.g. `1.0.0`) and type `deploy` to confirm.
 
-The workflow SSHs to gatekeeper, pulls the latest commit into `/opt/model-gateway/`, and runs `docker compose up --build -d`.
+The workflow:
+1. SSHs to gatekeeper, pulls the latest commit into `/opt/model-gateway/`
+2. Runs `docker compose up --build -d`
+3. Smoke tests the health endpoint
+4. Tags the commit as `v<version>` and creates a GitHub release with auto-generated notes
 
 ### Required GitHub secrets
 
