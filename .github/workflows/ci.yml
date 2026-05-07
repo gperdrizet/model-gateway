@@ -34,6 +34,7 @@ jobs:
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.GATEKEEPER_HOST }}
+          port: 44441
           username: ${{ secrets.GATEKEEPER_USER }}
           key: ${{ secrets.GATEKEEPER_SSH_KEY }}
           script: |
