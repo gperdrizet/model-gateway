@@ -11,11 +11,6 @@
 
 An authenticated, metered API gateway for llama-server.
 
-> **Model backend**: [gperdrizet/llama.cpp](https://github.com/gperdrizet/llama.cpp), llama-server running on a dedicated model server with a Tesla P100 GPU
-
-Sits in front of a running llama.cpp instance and adds user registration, token-based billing, and an admin panel.
-
-
 ## Using the API
 
 ### 1. Register
@@ -93,6 +88,8 @@ When your trial runs out, top up via **Stripe** (card) or **BTCPay Server** (Bit
 - Each request deducts tokens from the user's balance; requests are rejected with 402 when exhausted
 - Users can top up via Stripe (card) or BTCPay Server (Bitcoin)
 - All usage is recorded for metering and display on the dashboard
+
+> **Model backend**: [gperdrizet/llama.cpp](https://github.com/gperdrizet/llama.cpp), llama-server running on a dedicated model server with a Tesla P100 GPU
 
 ## Stack
 

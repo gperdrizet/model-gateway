@@ -153,7 +153,7 @@
   {# Trial banner if any active trial tokens #}
   {% if trial_remaining > 0 %}
   <div class="trial-banner">
-    <strong>Trial active</strong> — {{ trial_remaining_fmt }} tokens remaining,
+    <strong>Trial active:</strong> {{ trial_remaining_fmt }} tokens remaining,
     expires <strong>{{ trial_expires }}</strong>.
     {% if trial_days_left <= 3 %}Expiring soon! {% endif %}
     <a href="#buy" style="color:#92400e;">Buy tokens</a> to keep going after your trial ends.
@@ -180,7 +180,7 @@
 
   {# Usage chart #}
   <div class="chart-wrap">
-    <p class="section-title">Daily usage — last 30 days</p>
+    <p class="section-title">Daily usage, last 30 days</p>
     {% if daily_usage %}
     <div class="bar-legend">
       <span><span class="dot input"></span>Input</span>

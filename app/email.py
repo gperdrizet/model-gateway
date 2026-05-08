@@ -30,7 +30,7 @@ async def send_trial_key_email(to_email: str, api_key: str) -> None:
 
     trial_millions = TRIAL_TOKENS / 1_000_000
 
-    subject = "Your API key — get started in 60 seconds"
+    subject = "Your API key: get started in 60 seconds"
 
     text_body = f"""Welcome!
 
@@ -38,7 +38,7 @@ Your API key is:
 
     {api_key}
 
-Keep it safe — it won't be shown again.
+Keep it safe; it won't be shown again.
 
 You have {TRIAL_TOKENS:,} free tokens ({trial_millions:.1f}M) to use within the next {TRIAL_EXPIRY_DAYS} days.
 
@@ -76,7 +76,7 @@ Questions? Just reply to this email.
 
   <p>Your API key is:</p>
   <pre class="key">{api_key}</pre>
-  <p class="note">Keep it safe — it won't be shown again.</p>
+  <p class="note">Keep it safe; it won't be shown again.</p>
 
   <p>
     You have <strong>{TRIAL_TOKENS:,} free tokens ({trial_millions:.1f}M)</strong>
