@@ -16,8 +16,8 @@ SMTP_USER = os.environ['SMTP_USER']
 SMTP_PASSWORD = os.environ['SMTP_PASSWORD']
 SMTP_FROM = os.environ['SMTP_FROM']
 BASE_URL = os.environ.get('BASE_URL', '')
-TRIAL_TOKENS = int(os.environ.get('TRIAL_TOKENS', '500000'))
-TRIAL_EXPIRY_DAYS = int(os.environ.get('TRIAL_EXPIRY_DAYS', '14'))
+TRIAL_TOKENS = int(os.environ.get('TRIAL_TOKENS', '100000'))
+TRIAL_EXPIRY_DAYS = int(os.environ.get('TRIAL_EXPIRY_DAYS', '7'))
 
 
 async def send_trial_key_email(to_email: str, api_key: str) -> None:
