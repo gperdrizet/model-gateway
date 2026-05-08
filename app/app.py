@@ -47,6 +47,19 @@ _reg_attempts: dict[str, list[float]] = defaultdict(list)
 REG_LIMIT = 3
 REG_WINDOW = 3600
 
+# Per-IP rate limit on all /v1/* hits (catches unauthenticated hammering).
+# Generous enough to allow multiple real users behind the same NAT.
+_ip_inf_attempts: dict[str, list[float]] = defaultdict(list)
+INF_IP_LIMIT = int(os.environ.get('INFERENCE_IP_RATE_LIMIT', '120'))
+INF_IP_WINDOW = 60  # seconds
+
+# Per-user rate limit on authenticated inference requests.
+# Catches accidental infinite loops. LLM calls take seconds each, so 60/min
+# is generous for legitimate use while blocking runaway loops immediately.
+_user_inf_attempts: dict[str, list[float]] = defaultdict(list)
+INF_USER_LIMIT = int(os.environ.get('INFERENCE_USER_RATE_LIMIT', '60'))
+INF_USER_WINDOW = 60  # seconds
+
 
 def _check_reg_rate_limit(ip: str) -> bool:
     '''Check per-IP rate limit for registration attempts.
@@ -66,6 +79,50 @@ def _check_reg_rate_limit(ip: str) -> bool:
         return False
 
     _reg_attempts[ip].append(now)
+
+    return True
+
+
+def _check_ip_inference_rate_limit(ip: str) -> bool:
+    '''Check per-IP rate limit for inference requests.
+
+    Args:
+        ip: Client IP address string.
+
+    Returns:
+        True if within the limit, False if rate-limited.
+    '''
+
+    now = time.time()
+    attempts = [t for t in _ip_inf_attempts[ip] if now - t < INF_IP_WINDOW]
+    _ip_inf_attempts[ip] = attempts
+
+    if len(attempts) >= INF_IP_LIMIT:
+        return False
+
+    _ip_inf_attempts[ip].append(now)
+
+    return True
+
+
+def _check_user_inference_rate_limit(prefix: str) -> bool:
+    '''Check per-user rate limit for inference requests.
+
+    Args:
+        prefix: API key prefix (first 12 chars), used as the per-user key.
+
+    Returns:
+        True if within the limit, False if rate-limited.
+    '''
+
+    now = time.time()
+    attempts = [t for t in _user_inf_attempts[prefix] if now - t < INF_USER_WINDOW]
+    _user_inf_attempts[prefix] = attempts
+
+    if len(attempts) >= INF_USER_LIMIT:
+        return False
+
+    _user_inf_attempts[prefix].append(now)
 
     return True
 
@@ -534,7 +591,7 @@ async def _fulfill_checkout(session_obj: dict) -> None:
 
         if user is None:
             log.error("Stripe webhook: user_id %s not found", user_id)
-    
+
             return
 
         # Idempotency - skip if this session was already fulfilled
@@ -565,6 +622,17 @@ async def _fulfill_checkout(session_obj: dict) -> None:
 async def proxy(request: Request, path: str):
     '''Authenticate, check balance, and proxy the request to llama-server.'''
 
+    client_ip = request.client.host if request.client else ''
+
+    if not _check_ip_inference_rate_limit(client_ip):
+        return JSONResponse(
+            status_code=429,
+            content={'error': {
+                'message': 'Too many requests from your IP.',
+                'type': 'rate_limit_error'
+            }},
+        )
+
     user, session = await authenticate(request)
 
     if user is None:
@@ -573,16 +641,27 @@ async def proxy(request: Request, path: str):
                 content={'error': {'message': 'Invalid or missing API key.', 'type': 'auth_error'}},
             )
 
+    if not _check_user_inference_rate_limit(user.api_key_prefix):
+        await session.close()
+
+        return JSONResponse(
+            status_code=429,
+            content={'error': {
+                'message': 'Rate limit exceeded. Slow down and try again.',
+                'type': 'rate_limit_error'
+            }},
+        )
+
     async with session:
         available = await total_available_tokens(session, user)
-    
+
         if available <= 0:
 
             return JSONResponse(
                 status_code=402,
                 content={
-                    "error": {
-                        "message": "Insufficient token balance. Purchase more tokens at "
+                    'error': {
+                        'message': 'Insufficient token balance. Purchase more tokens at '
                                f"{os.environ.get('BASE_URL', '')}/buy",
                         'type': 'insufficient_quota',
                     }
@@ -590,7 +669,7 @@ async def proxy(request: Request, path: str):
             )
 
         body: dict | None = None
-    
+
         if request.method == 'POST':
             try:
                 body = await request.json()
@@ -621,7 +700,8 @@ async def _handle_standard(
     headers: dict,
     body: dict | None,
 ) -> Response:
-    '''Handle a non-streaming request: proxy to llama-server, record usage, and return the response.'''
+    '''Handle a non-streaming request: proxy to llama-server,
+    record usage, and return the response.'''
 
     response, input_tokens, output_tokens = await proxy_request(method, path, headers, body)
 
