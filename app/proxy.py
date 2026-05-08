@@ -1,10 +1,9 @@
-"""
-Async proxy: forwards requests to llama-server and extracts token usage.
+'''Async proxy: forwards requests to llama-server and extracts token usage.
 
 Privacy guarantee: request and response bodies are streamed through without
-being stored. Only the integer token counts from the final `usage` field
+being stored. Only the integer token counts from the final usage field
 are returned to the caller for metering.
-"""
+'''
 
 import json
 import os
@@ -15,7 +14,7 @@ import httpx
 LLAMA_BASE_URL = os.environ["LLAMA_BASE_URL"].rstrip("/")
 LLAMA_API_KEY = os.environ["LLAMA_API_KEY"]
 
-# Shared async client — connection pooling across requests
+# Shared async client - connection pooling across requests
 _client = httpx.AsyncClient(
     base_url=LLAMA_BASE_URL,
     timeout=httpx.Timeout(connect=10.0, read=600.0, write=60.0, pool=5.0),
@@ -23,14 +22,23 @@ _client = httpx.AsyncClient(
 
 
 def _inject_usage_tracking(body: dict) -> dict:
-    """
-    For streaming requests, inject stream_options.include_usage = true so
-    llama-server sends a final chunk with token counts.
-    """
-    if body.get("stream"):
-        opts = body.get("stream_options") or {}
-        opts["include_usage"] = True
-        body = {**body, "stream_options": opts}
+    '''Inject stream_options.include_usage into streaming request bodies.
+
+    For streaming requests, ensures llama-server sends a final SSE chunk
+    containing token counts.
+
+    Args:
+        body: The parsed JSON request body.
+
+    Returns:
+        The modified body dict with include_usage set, or the original
+        body unchanged if the request is not streaming.
+    '''
+    if body.get('stream'):
+        opts = body.get('stream_options') or {}
+        opts['include_usage'] = True
+        body = {**body, 'stream_options': opts}
+
     return body
 
 
@@ -40,17 +48,22 @@ async def proxy_request(
     headers: dict,
     body: dict | None,
 ) -> tuple[httpx.Response, int, int]:
-    """
-    Forward a non-streaming request to llama-server.
+    '''Forward a non-streaming request to llama-server.
 
-    Returns (response, input_tokens, output_tokens).
-    The response is returned as-is for FastAPI to relay to the client.
-    """
+    Args:
+        method: HTTP method (GET, POST, etc.).
+        path: Request path forwarded to llama-server.
+        headers: Incoming request headers; authorization is replaced.
+        body: Parsed JSON body, or None for non-POST requests.
+
+    Returns:
+        A tuple of (response, input_tokens, output_tokens).
+    '''
     forward_headers = {
         k: v for k, v in headers.items()
-        if k.lower() not in ("host", "authorization", "content-length")
+        if k.lower() not in ('host', 'authorization', 'content-length')
     }
-    forward_headers["Authorization"] = f"Bearer {LLAMA_API_KEY}"
+    forward_headers['Authorization'] = f'Bearer {LLAMA_API_KEY}'
 
     response = await _client.request(
         method,
@@ -62,10 +75,10 @@ async def proxy_request(
     input_tokens, output_tokens = 0, 0
     try:
         data = response.json()
-        usage = data.get("usage") or {}
-        input_tokens = usage.get("prompt_tokens", 0)
-        output_tokens = usage.get("completion_tokens", 0)
-    except Exception:
+        usage = data.get('usage') or {}
+        input_tokens = usage.get('prompt_tokens', 0)
+        output_tokens = usage.get('completion_tokens', 0)
+    except (ValueError, KeyError):
         pass
 
     return response, input_tokens, output_tokens
@@ -77,24 +90,26 @@ async def proxy_stream(
     headers: dict,
     body: dict,
 ) -> AsyncIterator[tuple[bytes, int, int]]:
-    """
-    Forward a streaming request to llama-server.
+    '''Forward a streaming request to llama-server as SSE chunks.
 
-    Yields raw SSE chunks as bytes. The final tuple yielded has non-zero
-    token counts parsed from the last data chunk containing a `usage` field.
+    Args:
+        method: HTTP method.
+        path: Request path forwarded to llama-server.
+        headers: Incoming request headers; authorization is replaced.
+        body: Parsed JSON request body.
 
-    Usage:
-        async for chunk, in_tok, out_tok in proxy_stream(...):
-            yield chunk   # relay to client
-            # in_tok / out_tok are non-zero only on the final chunk
-    """
+    Yields:
+        Tuples of (chunk, input_tokens, output_tokens). For all but the
+        final tuple, token counts are 0. The last tuple is a zero-byte
+        sentinel carrying the final token counts.
+    '''
     body = _inject_usage_tracking(body)
 
     forward_headers = {
         k: v for k, v in headers.items()
-        if k.lower() not in ("host", "authorization", "content-length")
+        if k.lower() not in ('host', 'authorization', 'content-length')
     }
-    forward_headers["Authorization"] = f"Bearer {LLAMA_API_KEY}"
+    forward_headers['Authorization'] = f'Bearer {LLAMA_API_KEY}'
 
     input_tokens, output_tokens = 0, 0
 
@@ -117,25 +132,30 @@ async def proxy_stream(
 
 
 def _parse_sse_usage(chunk: bytes) -> tuple[int, int]:
-    """
-    Extract token counts from an SSE chunk if it contains a usage field.
-    Returns (0, 0) if not found or not parseable.
-    """
+    '''Extract token counts from an SSE chunk.
+
+    Args:
+        chunk: Raw SSE bytes from the llama-server stream.
+
+    Returns:
+        A tuple of (input_tokens, output_tokens), or (0, 0) if the chunk
+        does not contain a usage field or cannot be parsed.
+    '''
     try:
-        text = chunk.decode("utf-8", errors="ignore")
+        text = chunk.decode('utf-8', errors='ignore')
         for line in text.splitlines():
-            if not line.startswith("data:"):
+            if not line.startswith('data:'):
                 continue
             payload = line[5:].strip()
-            if payload == "[DONE]":
+            if payload == '[DONE]':
                 continue
             data = json.loads(payload)
-            usage = data.get("usage")
+            usage = data.get('usage')
             if usage:
                 return (
-                    usage.get("prompt_tokens", 0),
-                    usage.get("completion_tokens", 0),
+                    usage.get('prompt_tokens', 0),
+                    usage.get('completion_tokens', 0),
                 )
-    except Exception:
+    except (ValueError, KeyError, UnicodeDecodeError):
         pass
     return 0, 0
