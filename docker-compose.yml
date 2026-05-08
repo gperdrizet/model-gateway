@@ -36,7 +36,7 @@ services:
       BASE_URL: ${BASE_URL}
       ADMIN_KEY: ${ADMIN_KEY}
     extra_hosts:
-      - "host-gateway:host-gateway"
+      host-gateway: host-gateway
     depends_on:
       db:
         condition: service_healthy

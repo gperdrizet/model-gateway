@@ -1,9 +1,8 @@
-"""
-Email sending via SMTP.
+'''Email sending via SMTP.
 
 Used for: trial key delivery.
-All emails are transactional — no marketing without explicit opt-in.
-"""
+All emails are transactional - no marketing without explicit opt-in.
+'''
 
 import os
 from email.mime.multipart import MIMEMultipart
@@ -11,18 +10,24 @@ from email.mime.text import MIMEText
 
 import aiosmtplib
 
-SMTP_HOST = os.environ["SMTP_HOST"]
-SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
-SMTP_USER = os.environ["SMTP_USER"]
-SMTP_PASSWORD = os.environ["SMTP_PASSWORD"]
-SMTP_FROM = os.environ["SMTP_FROM"]
-BASE_URL = os.environ.get("BASE_URL", "")
-TRIAL_TOKENS = int(os.environ.get("TRIAL_TOKENS", "500000"))
-TRIAL_EXPIRY_DAYS = int(os.environ.get("TRIAL_EXPIRY_DAYS", "14"))
+SMTP_HOST = os.environ['SMTP_HOST']
+SMTP_PORT = int(os.environ.get('SMTP_PORT', '587'))
+SMTP_USER = os.environ['SMTP_USER']
+SMTP_PASSWORD = os.environ['SMTP_PASSWORD']
+SMTP_FROM = os.environ['SMTP_FROM']
+BASE_URL = os.environ.get('BASE_URL', '')
+TRIAL_TOKENS = int(os.environ.get('TRIAL_TOKENS', '500000'))
+TRIAL_EXPIRY_DAYS = int(os.environ.get('TRIAL_EXPIRY_DAYS', '14'))
 
 
 async def send_trial_key_email(to_email: str, api_key: str) -> None:
-    """Send the trial API key to a new registrant."""
+    '''Send the trial API key to a new registrant via SMTP.
+
+    Args:
+        to_email: Recipient email address.
+        api_key: The raw API key to include in the email (shown only once).
+    '''
+
     trial_millions = TRIAL_TOKENS / 1_000_000
 
     subject = "Your API key — get started in 60 seconds"
@@ -95,12 +100,12 @@ Questions? Just reply to this email.
 </body>
 </html>"""
 
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"] = SMTP_FROM
-    msg["To"] = to_email
-    msg.attach(MIMEText(text_body, "plain"))
-    msg.attach(MIMEText(html_body, "html"))
+    msg = MIMEMultipart('alternative')
+    msg['Subject'] = subject
+    msg['From'] = SMTP_FROM
+    msg['To'] = to_email
+    msg.attach(MIMEText(text_body, 'plain'))
+    msg.attach(MIMEText(html_body, 'html'))
 
     await aiosmtplib.send(
         msg,

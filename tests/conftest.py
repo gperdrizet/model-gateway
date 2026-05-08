@@ -1,12 +1,10 @@
-"""
-Pytest configuration and shared fixtures.
+'''Pytest configuration and shared fixtures.
 
 Tests use an in-memory SQLite database so they run without Docker or PostgreSQL.
 The llama-server backend is mocked via httpx.MockTransport.
-"""
+'''
 
 import os
-import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 
@@ -31,15 +29,23 @@ os.environ.setdefault("BASE_URL", "http://testserver")
 os.environ.setdefault("TRIAL_TOKENS", "500000")
 os.environ.setdefault("TRIAL_EXPIRY_DAYS", "14")
 
-from app.app import app  # noqa: E402 — must import after env vars are set
+from app.app import app  # noqa: E402 - must import after env vars are set
 from app.db import engine, Base, generate_api_key, User, TrialTokens
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from datetime import datetime, timedelta, timezone
 
 
-@pytest_asyncio.fixture(scope="function")
-async def db_session():
-    """Fresh in-memory DB for each test."""
+# ── Fixtures ─────────────────────────────────────────────────────────────────
+
+
+@pytest_asyncio.fixture(scope='function')
+async def _db_session():
+    '''Provide a fresh in-memory SQLite database for each test.
+
+    Yields:
+        None; sets up and tears down the schema around each test.
+    '''
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
@@ -47,21 +53,30 @@ async def db_session():
         await conn.run_sync(Base.metadata.drop_all)
 
 
-@pytest_asyncio.fixture(scope="function")
-async def client(db_session):
-    """ASGI test client with fresh DB."""
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as c:
+@pytest_asyncio.fixture(scope='function')
+async def client(_db_session):
+    '''Provide an ASGI test client backed by a fresh database.
+
+    Yields:
+        An httpx.AsyncClient configured against the FastAPI app.
+    '''
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url='http://testserver') as c:
         yield c
 
 
-@pytest_asyncio.fixture(scope="function")
-async def registered_user(db_session):
-    """A real user with 500k trial tokens in the DB."""
+@pytest_asyncio.fixture(scope='function')
+async def registered_user(_db_session):
+    '''Create a real user with 500k trial tokens and return their credentials.
+
+    Yields:
+        A dict with keys: id, email, key, prefix.
+    '''
     raw_key, key_hash, prefix = generate_api_key()
     session_maker = async_sessionmaker(engine, expire_on_commit=False)
     async with session_maker() as session:
         user = User(
-            email="fixture@example.com",
+            email='fixture@example.com',
             api_key_hash=key_hash,
             api_key_prefix=prefix,
             balance_tokens=0,
@@ -78,4 +93,4 @@ async def registered_user(db_session):
         session.add(trial)
         await session.commit()
 
-    return {"id": user.id, "email": user.email, "key": raw_key, "prefix": prefix}
+    return {'id': user.id, 'email': user.email, 'key': raw_key, 'prefix': prefix}
