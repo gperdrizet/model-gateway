@@ -43,7 +43,7 @@ jobs:
           COMPOSE_PROJECT_NAME=staging docker compose \
             -f docker-compose.yml \
             -f docker-compose.staging.yml \
-            up --build -d
+            up --build -d --remove-orphans
 
           sleep 15
           curl -fsS http://127.0.0.1:8505/health | grep '"status":"ok"'
