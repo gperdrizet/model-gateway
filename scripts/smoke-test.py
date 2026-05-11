@@ -535,18 +535,20 @@ def main() -> int:
         if grant_ok and inf_ok:
             record(test_dashboard(base, smoke_key, smoke_email, verbose))
 
-    # ── Phase 6: rate limiting ────────────────────────────────────────────
-    section('6. Rate limiting')
+    # ── Cleanup ───────────────────────────────────────────────────────────
+    section('6. Cleanup')
+    cleanup(base, admin_key, user_id, email)
+
+    # ── Phase 7: rate limiting ────────────────────────────────────────────
+    # Run last — deliberately fills the IP rate-limit bucket, which would
+    # cause false 429s in any sections that follow within the same 60s window.
+    section('7. Rate limiting')
 
     if args.skip_rate_limit:
         skip('rate limit test skipped (--skip-rate-limit)')
     else:
         print(f'  {_col(DIM, "sending 130 unauthenticated requests — this takes a few seconds...")}')
         record(test_rate_limit(base, verbose))
-
-    # ── Cleanup ───────────────────────────────────────────────────────────
-    section('7. Cleanup')
-    cleanup(base, admin_key, user_id, email)
 
     # ── Summary ───────────────────────────────────────────────────────────
     total = passed + failed
