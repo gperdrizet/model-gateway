@@ -58,7 +58,7 @@ jobs:
 
           cd "$DEPLOY_DIR"
 
-          docker compose up --build -d
+          docker compose up --build -d --remove-orphans
 
           sleep 8
           curl -fsS http://127.0.0.1:8503/health | grep '"status":"ok"'
