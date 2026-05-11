@@ -42,9 +42,10 @@ from .proxy import proxy_request, proxy_stream
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
-# Simple in-memory rate limit for registration: max 3 attempts per IP per hour
+# Simple in-memory rate limit for registration: max attempts per IP per hour.
+# Override via REGISTRATION_RATE_LIMIT env var.
 _reg_attempts: dict[str, list[float]] = defaultdict(list)
-REG_LIMIT = 3
+REG_LIMIT = int(os.environ.get('REGISTRATION_RATE_LIMIT', '10'))
 REG_WINDOW = 3600
 
 # Per-IP rate limit on all /v1/* hits (catches unauthenticated hammering).
