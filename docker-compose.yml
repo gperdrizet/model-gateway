@@ -1,5 +1,6 @@
 services:
   db:
+    container_name: model-gateway-db
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
@@ -14,7 +15,8 @@ services:
       timeout: 5s
       retries: 10
 
-  gateway:
+  api:
+    container_name: model-gateway-api
     build: .
     restart: unless-stopped
     ports:
@@ -42,6 +44,7 @@ services:
         condition: service_healthy
 
   adminer:
+    container_name: model-gateway-adminer
     image: adminer:4
     restart: unless-stopped
     ports:
