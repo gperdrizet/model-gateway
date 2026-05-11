@@ -383,10 +383,10 @@ def get_user_id_from_admin(base: str, admin_key: str, email: str) -> int | None:
     if idx == -1:
         return None
 
-    # Search backwards from the email for value="NNN" (user id in hidden form fields)
-    snippet = text[max(0, idx - 500):idx]
+    # Search forwards from the email for value="NNN" (user id in hidden form fields)
+    snippet = text[idx:idx + 500]
 
-    for m in reversed(list(re.finditer(r'value="(\d+)"', snippet))):
+    for m in re.finditer(r'value="(\d+)"', snippet):
         return int(m.group(1))
 
     return None
