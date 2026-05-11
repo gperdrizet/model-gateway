@@ -46,7 +46,7 @@ jobs:
             up --build -d --remove-orphans
 
           sleep 15
-          curl -fsS http://127.0.0.1:8505/health | grep '"status":"ok"'
+          curl -fsS http://100.64.0.1:8505/health | grep '"status":"ok"'
           echo "Staging deploy OK"
           REMOTE
 
