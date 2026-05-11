@@ -35,6 +35,7 @@ response = client.chat.completions.create(
     model='default',
     messages=[{'role': 'user', 'content': 'Hello!'}],
 )
+
 print(response.choices[0].message.content)
 ```
 
@@ -88,8 +89,6 @@ When your trial runs out, top up via **Stripe** (card) or **BTCPay Server** (Bit
 - Each request deducts tokens from the user's balance; requests are rejected with 402 when exhausted
 - Users can top up via Stripe (card) or BTCPay Server (Bitcoin)
 - All usage is recorded for metering and display on the dashboard
-
-> **Model backend**: [gperdrizet/llama.cpp](https://github.com/gperdrizet/llama.cpp), llama-server running on a dedicated model server with a Tesla P100 GPU
 
 ## Stack
 
