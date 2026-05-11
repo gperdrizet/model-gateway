@@ -2,3 +2,11 @@
 #   COMPOSE_PROJECT_NAME=staging docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d
 # Staging overlay — set GATEWAY_PORT=8505 and ADMINER_PORT=8506 in staging .env
 # No port overrides needed here — base compose uses ${GATEWAY_PORT} and ${ADMINER_PORT}
+
+services:
+  db:
+    container_name: model-gateway-db-staging
+  api:
+    container_name: model-gateway-api-staging
+  adminer:
+    container_name: model-gateway-adminer-staging
