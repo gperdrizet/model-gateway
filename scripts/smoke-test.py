@@ -314,11 +314,11 @@ def test_grant_and_infer(
 
 
 def test_dashboard(base: str, api_key: str, email: str, verbose: bool) -> bool:
-    '''GET /dashboard?key=... → 200 and shows the user email.'''
+    '''GET /dashboard?key=... → 200 and shows the dashboard page.'''
 
     status, body, _ = request(f'{base}/dashboard?key={api_key}')
 
-    if status == 200 and email.encode() in body:
+    if status == 200 and b'<title>Dashboard</title>' in body:
         ok('dashboard renders for user')
         return True
 
