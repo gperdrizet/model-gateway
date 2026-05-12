@@ -28,7 +28,12 @@ async def send_trial_key_email(to_email: str, api_key: str) -> None:
         api_key: The raw API key to include in the email (shown only once).
     '''
 
-    trial_millions = TRIAL_TOKENS / 1_000_000
+    if TRIAL_TOKENS >= 1_000_000:
+        trial_tokens_fmt = f"{TRIAL_TOKENS / 1_000_000:.1f}M"
+    elif TRIAL_TOKENS >= 1_000:
+        trial_tokens_fmt = f"{TRIAL_TOKENS // 1_000}k"
+    else:
+        trial_tokens_fmt = str(TRIAL_TOKENS)
 
     subject = "Your API key: get started in 60 seconds"
 
@@ -40,7 +45,7 @@ Your API key is:
 
 Keep it safe; it won't be shown again.
 
-You have {TRIAL_TOKENS:,} free tokens ({trial_millions:.1f}M) to use within the next {TRIAL_EXPIRY_DAYS} days.
+You have {trial_tokens_fmt} free tokens to use within the next {TRIAL_EXPIRY_DAYS} days.
 
 To make your first request:
 
@@ -79,7 +84,7 @@ Questions? Just reply to this email.
   <p class="note">Keep it safe; it won't be shown again.</p>
 
   <p>
-    You have <strong>{TRIAL_TOKENS:,} free tokens ({trial_millions:.1f}M)</strong>
+    You have <strong>{trial_tokens_fmt} free tokens</strong>
     to use within the next <strong>{TRIAL_EXPIRY_DAYS} days</strong>.
   </p>
 

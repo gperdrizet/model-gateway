@@ -26,8 +26,8 @@ os.environ.setdefault("SMTP_PASSWORD", "placeholder")
 os.environ.setdefault("SMTP_FROM", "test@example.com")
 os.environ.setdefault("ADMIN_KEY", "test-admin-key")
 os.environ.setdefault("BASE_URL", "http://testserver")
-os.environ.setdefault("TRIAL_TOKENS", "500000")
-os.environ.setdefault("TRIAL_EXPIRY_DAYS", "14")
+os.environ.setdefault("TRIAL_TOKENS", "100000")
+os.environ.setdefault("TRIAL_EXPIRY_DAYS", "7")
 
 from app.app import app  # noqa: E402 - must import after env vars are set
 from app.db import engine, Base, generate_api_key, User, TrialTokens
@@ -67,7 +67,7 @@ async def client(_db_session):
 
 @pytest_asyncio.fixture(scope='function')
 async def registered_user(_db_session):
-    '''Create a real user with 500k trial tokens and return their credentials.
+    '''Create a real user with 100k trial tokens and return their credentials.
 
     Yields:
         A dict with keys: id, email, key, prefix.

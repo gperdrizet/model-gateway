@@ -31,7 +31,7 @@ async def test_register_page(client: AsyncClient):
     r = await client.get('/register')
 
     assert r.status_code == 200
-    assert b'500k' in r.content or b'500' in r.content
+    assert b'100k' in r.content or b'100' in r.content
 
 
 async def test_register_new_user(client: AsyncClient):
