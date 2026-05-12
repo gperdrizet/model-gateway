@@ -29,6 +29,8 @@ jobs:
     needs: guard
     runs-on: ubuntu-latest
     environment: production      # requires manual approval in GitHub → Settings → Environments
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - uses: actions/checkout@v4.3.1
 
