@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: production      # requires manual approval in GitHub → Settings → Environments
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.3.1
 
       - name: Deploy to gatekeeper (production)
         env:
