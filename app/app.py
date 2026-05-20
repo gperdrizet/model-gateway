@@ -236,10 +236,9 @@ async def register_submit(request: Request, email: str = Form(...)):
         }, status_code=429)
 
     email = email.strip().lower()
+    returning = False
 
     async with async_session() as session:
-
-        # Check if already registered - respond identically to prevent enumeration
         existing = (await session.execute(
             select(User).where(User.email == email)
         )).scalar_one_or_none()
@@ -265,15 +264,23 @@ async def register_submit(request: Request, email: str = Form(...)):
             session.add(trial)
             await session.commit()
 
-            # Send email outside the transaction - failure here is non-fatal
-            try:
-                await send_trial_key_email(email, raw_key)
-            except (aiosmtplib.SMTPException, OSError):
-                log.exception("Failed to send trial key email to %s", email)
+        else:
+            # Existing user: issue a new key (old one is invalidated), no token change.
+            returning = True
+            raw_key, key_hash, prefix = generate_api_key()
+            existing.api_key_hash = key_hash
+            existing.api_key_prefix = prefix
+            await session.commit()
 
-    # Same response regardless of whether email was new or already existed
+        # Send email outside the transaction - failure here is non-fatal
+        try:
+            await send_trial_key_email(email, raw_key)
+        except (aiosmtplib.SMTPException, OSError):
+            log.exception("Failed to send trial key email to %s", email)
+
     return templates.TemplateResponse(request, 'registered.html', {
         'email': email,
+        'returning': returning,
         'trial_tokens_fmt': _fmt_tokens(TRIAL_TOKENS),
         'trial_expiry_days': TRIAL_EXPIRY_DAYS,
     })

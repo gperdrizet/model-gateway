@@ -37,17 +37,17 @@
   <div class="card">
     <div class="icon">✉️</div>
     <h1>Check your email</h1>
-    <p>
-      We've sent your API key to <strong>{{ email }}</strong>.<br>
-      It should arrive within a minute.
-    </p>
-    <p>
-      Your key comes with <strong>{{ trial_tokens_fmt }} free tokens</strong>,
-      valid for <strong>{{ trial_expiry_days }} days</strong>.
-    </p>
+    <p>We've sent your API key to <strong>{{ email }}</strong>.<br>
+    It should arrive within a minute.</p>
+    {% if returning %}
+    <p>Your token balance is unchanged. Your previous key is no longer valid.</p>
+    {% else %}
+    <p>Your key comes with <strong>{{ trial_tokens_fmt }} free tokens</strong>,
+    valid for <strong>{{ trial_expiry_days }} days</strong>.</p>
+    {% endif %}
     <p class="note">
       Didn't get it? Check your spam folder, or
-      <a href="/register">register again</a> with the same address.
+      <a href="/register">try again</a> with the same address.
     </p>
   </div>
 </body>
