@@ -58,7 +58,7 @@ To make your first request:
       }}'
 
 View your usage and buy more tokens:
-    {BASE_URL}/dashboard
+    {BASE_URL}/dashboard?key={api_key}
 
 Questions? Just reply to this email.
 """
@@ -98,7 +98,7 @@ Questions? Just reply to this email.
   }}'</pre>
 
   <p>
-    <a href="{BASE_URL}/dashboard">View your usage and buy more tokens →</a>
+    <a href="{BASE_URL}/dashboard?key={api_key}">View your usage and buy more tokens →</a>
   </p>
 
   <p class="note">Questions? Reply to this email.</p>
