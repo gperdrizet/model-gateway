@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Promptly — Fast LLM API</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #f9fafb;
+      color: #111;
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 24px;
+    }
+    .hero {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+    .hero h1 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      margin: 0 0 12px;
+      letter-spacing: -0.02em;
+    }
+    .hero p {
+      color: #555;
+      font-size: 1.05rem;
+      margin: 0;
+      line-height: 1.6;
+    }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      width: 100%;
+      max-width: 640px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      padding: 32px 28px;
+    }
+    .card h2 {
+      font-size: 1.1rem;
+      margin: 0 0 8px;
+    }
+    .card p {
+      font-size: 0.875rem;
+      color: #666;
+      margin: 0 0 20px;
+      line-height: 1.5;
+    }
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 11px;
+      background: #111;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+      transition: background 0.15s;
+    }
+    .btn:hover { background: #2563eb; }
+    .btn-outline {
+      background: transparent;
+      color: #111;
+      border: 1px solid #d1d5db;
+    }
+    .btn-outline:hover { background: #f3f4f6; color: #111; }
+    label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: #555;
+      margin-bottom: 6px;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-family: monospace;
+      margin-bottom: 12px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    input[type="text"]:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+    .error {
+      background: #fef2f2;
+      color: #b91c1c;
+      border-radius: 8px;
+      padding: 8px 12px;
+      margin-bottom: 12px;
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="hero">
+    <h1>Promptly</h1>
+    <p>Pay-per-token LLM API access. No subscription required.</p>
+  </div>
+
+  <div class="cards">
+    <!-- Register card -->
+    <div class="card">
+      <h2>Get started free</h2>
+      <p>Register with your email to receive a free trial API key instantly.</p>
+      <a class="btn" href="/register">Create an account</a>
+    </div>
+
+    <!-- Sign in card -->
+    <div class="card">
+      <h2>Already have a key?</h2>
+      <p>Enter your API key to view your balance and usage.</p>
+      {% if key_error %}
+      <div class="error">{{ key_error }}</div>
+      {% endif %}
+      <form method="get" action="/dashboard">
+        <label for="key">API key</label>
+        <input type="text" id="key" name="key" placeholder="sk-…" autocomplete="off" spellcheck="false">
+        <button type="submit" class="btn btn-outline">View dashboard</button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>
