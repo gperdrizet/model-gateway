@@ -9,15 +9,32 @@
 [![Docker](https://img.shields.io/badge/Docker-compose-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-An authenticated, metered API gateway for llama-server.
+An authenticated, metered API gateway for LLM inference.
+
+## How it works
+
+- Users register at **[https://promptlyapi.com](https://promptlyapi.com)** and receive a trial allocation (100k tokens, 7 days)
+- API calls are made to `/v1/...` with a Bearer token, compatible with the OpenAI client SDK
+- Each request deducts tokens from the user's balance; requests are rejected with 402 when exhausted
+- Users can top up via Stripe (card) or BTCPay Server (Bitcoin)
+- All usage is recorded for metering and display on the dashboard
+
+## Stack
+
+- **FastAPI** + uvicorn: API server
+- **PostgreSQL**: user accounts, token balances, usage events, purchases
+- **Docker Compose**: gateway + db + adminer
+- **nginx**: TLS termination and reverse proxy on the gateway server
 
 ## Using the API
 
 ### 1. Register
 
-Go to **[https://promptlyapi.com/register](https://promptlyapi.com/register)** and enter your email address. You will receive an API key by email within a few seconds.
+Go to **[https://promptlyapi.com](https://promptlyapi.com)** and click **Create an account**, or go directly to **[https://promptlyapi.com/register](https://promptlyapi.com/register)**. Enter your email address and your API key will arrive by email within a few seconds.
 
 Your account starts with a **free trial: 100,000 tokens valid for 7 days**.
+
+> **Lost your key?** Go back to [https://promptlyapi.com/register](https://promptlyapi.com/register) and enter the same email address. A new key will be issued and sent to you — your token balance is preserved, but the old key is immediately invalidated.
 
 ### 2. Make your first request
 
@@ -69,7 +86,7 @@ curl https://promptlyapi.com/v1/chat/completions \
 
 ### 3. Check your balance
 
-Visit **[https://promptlyapi.com/dashboard?key=sk-your-key-here](https://promptlyapi.com/dashboard?key=sk-your-key-here)** to see your current token balance and recent usage.
+Go to **[https://promptlyapi.com](https://promptlyapi.com)**, enter your API key in the **Already have a key?** box, and click **View dashboard**. You can also go directly to `https://promptlyapi.com/dashboard?key=sk-your-key-here`.
 
 ### 4. Top up
 
@@ -82,20 +99,6 @@ When your trial runs out, top up via **Stripe** (card) or **BTCPay Server** (Bit
 - Requests are rejected with **402 Payment Required** when your balance is exhausted
 - Rate limits: 120 requests/min per IP, 60 requests/min per API key
 
-## How it works
-
-- Users register at `/register` and receive a trial allocation (100k tokens, 7 days)
-- API calls are made to `/v1/...` with a Bearer token, compatible with the OpenAI client SDK
-- Each request deducts tokens from the user's balance; requests are rejected with 402 when exhausted
-- Users can top up via Stripe (card) or BTCPay Server (Bitcoin)
-- All usage is recorded for metering and display on the dashboard
-
-## Stack
-
-- **FastAPI** + uvicorn: API server
-- **PostgreSQL**: user accounts, token balances, usage events, purchases
-- **Docker Compose**: gateway + db + adminer
-- **nginx**: TLS termination and reverse proxy on the gateway server
 
 ## Development
 
