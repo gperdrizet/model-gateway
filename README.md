@@ -15,7 +15,7 @@ An authenticated, metered API gateway for llama-server.
 
 ### 1. Register
 
-Go to **[https://model.perdrizet.org/register](https://model.perdrizet.org/register)** and enter your email address. You will receive an API key by email within a few seconds.
+Go to **[https://promptlyapi.com/register](https://promptlyapi.com/register)** and enter your email address. You will receive an API key by email within a few seconds.
 
 Your account starts with a **free trial: 100,000 tokens valid for 7 days**.
 
@@ -27,7 +27,7 @@ The API is compatible with the OpenAI Python SDK, just point it at the gateway:
 from openai import OpenAI
 
 client = OpenAI(
-    base_url='https://model.perdrizet.org/v1',
+    base_url='https://promptlyapi.com/v1',
     api_key='sk-your-key-here',
 )
 
@@ -46,7 +46,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage
 
 llm = ChatOpenAI(
-    base_url='https://model.perdrizet.org/v1',
+    base_url='https://promptlyapi.com/v1',
     api_key='sk-your-key-here',
     model='default',
 )
@@ -58,7 +58,7 @@ print(response.content)
 Or with `curl`:
 
 ```bash
-curl https://model.perdrizet.org/v1/chat/completions \
+curl https://promptlyapi.com/v1/chat/completions \
   -H "Authorization: Bearer sk-your-key-here" \
   -H "Content-Type: application/json" \
   -d '{
@@ -69,7 +69,7 @@ curl https://model.perdrizet.org/v1/chat/completions \
 
 ### 3. Check your balance
 
-Visit **[https://model.perdrizet.org/dashboard?key=sk-your-key-here](https://model.perdrizet.org/dashboard?key=sk-your-key-here)** to see your current token balance and recent usage.
+Visit **[https://promptlyapi.com/dashboard?key=sk-your-key-here](https://promptlyapi.com/dashboard?key=sk-your-key-here)** to see your current token balance and recent usage.
 
 ### 4. Top up
 
@@ -159,7 +159,7 @@ Copy `.env.template` and fill in values. Key production overrides vs. defaults:
 
 | Variable | Production value |
 |---|---|
-| `BASE_URL` | `https://model.perdrizet.org` |
+| `BASE_URL` | `https://promptlyapi.com` |
 | `LLAMA_BASE_URL` | `http://100.64.0.2:8502` |
 | `ADMINER_BIND_HOST` | `100.64.0.1` (tailnet only) |
 | `GATEWAY_BIND` | `127.0.0.1` (behind nginx) |

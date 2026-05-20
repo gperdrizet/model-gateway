@@ -204,6 +204,13 @@ async def health():
 
 # ── Registration ─────────────────────────────────────────────────────────────
 
+@app.get("/", response_class=HTMLResponse)
+async def index(request: Request):
+    '''Render the landing page.'''
+
+    return templates.TemplateResponse(request, 'index.html', {'key_error': None})
+
+
 @app.get("/register", response_class=HTMLResponse)
 async def register_page(request: Request):
     '''Render the registration form.'''
@@ -857,11 +864,21 @@ def _check_admin(key: str) -> bool:
 
 
 @app.get("/admin", response_class=HTMLResponse)
-async def admin_panel(request: Request, key: str = Query(...)):
-    '''Render the admin panel. Requires ADMIN_KEY and a request from an allowed CIDR.'''
+async def admin_panel(request: Request, key: str = Query(default='')):
+    '''Render the admin panel. Shows login form if key is absent or wrong.'''
 
-    if not _check_admin_ip(request) or not _check_admin(key):
+    if not _check_admin_ip(request):
         return JSONResponse(status_code=403, content={'error': 'forbidden'})
+
+    if not key:
+        return templates.TemplateResponse(request, 'admin_login.html', {'error': None})
+
+    if not _check_admin(key):
+        return templates.TemplateResponse(
+            request, 'admin_login.html',
+            {'error': 'Incorrect admin key.'},
+            status_code=403,
+        )
 
     flash = request.query_params.get('flash')
     flash_type = request.query_params.get('ft', 'ok')
