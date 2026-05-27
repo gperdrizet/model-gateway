@@ -1,4 +1,4 @@
-# Promptly API — Quick Reference for AI Agents
+# Promptly API: quick reference for AI agents
 
 Base URL: `https://promptlyapi.com`
 Auth: `Authorization: Bearer sk-<your-key>`
@@ -16,13 +16,13 @@ curl https://promptlyapi.com/v1/chat/completions \
   }'
 ```
 
-The `model` field is accepted but ignored — the server uses whichever model is loaded. The actual model name is returned in the response (e.g. `gpt-oss-20b-mxfp4.gguf`).
+The `model` field is accepted but ignored; the server uses whichever model is loaded. The actual model name is returned in the response (e.g. `gpt-oss-20b-mxfp4.gguf`).
 
 ## Response format
 
 Standard OpenAI shape. Always read `choices[0].message.content`.
 
-The loaded model is a reasoning model. Responses include a non-standard `reasoning_content` field — ignore it; it is the model's internal chain-of-thought, not the answer:
+The loaded model is a reasoning model. Responses include a non-standard `reasoning_content` field; ignore it, it is the model's internal chain-of-thought, not the answer:
 
 ```json
 {

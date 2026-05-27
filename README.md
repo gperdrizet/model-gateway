@@ -34,7 +34,7 @@ Go to **[https://promptlyapi.com](https://promptlyapi.com)** and click **Create 
 
 Your account starts with a **free trial: 100,000 tokens valid for 7 days**.
 
-> **Lost your key?** Go back to [https://promptlyapi.com/register](https://promptlyapi.com/register) and enter the same email address. A new key will be issued and sent to you — your token balance is preserved, but the old key is immediately invalidated.
+> **Lost your key?** Go back to [https://promptlyapi.com/register](https://promptlyapi.com/register) and enter the same email address. A new key will be issued and sent to you; your token balance is preserved, but the old key is immediately invalidated.
 
 ### 2. Make your first request
 
