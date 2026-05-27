@@ -99,6 +99,33 @@ When your trial runs out, top up via **Stripe** (card) or **BTCPay Server** (Bit
 - Requests are rejected with **402 Payment Required** when your balance is exhausted
 - Rate limits: 120 requests/min per IP, 60 requests/min per API key
 
+### Model name and response format
+
+The `model` field in your request is accepted but ignored; the server always uses whichever model is currently loaded. The model name returned in the response reflects the actual loaded model (e.g. `gpt-oss-20b-mxfp4.gguf`). You can query the current model name with:
+
+```bash
+curl https://promptlyapi.com/v1/models \
+  -H "Authorization: Bearer sk-your-key-here"
+```
+
+The currently loaded model is a reasoning model. Responses include a non-standard `reasoning_content` field alongside the standard `content` field:
+
+```json
+{
+  "choices": [{
+    "message": {
+      "role": "assistant",
+      "content": "Hello!",
+      "reasoning_content": "The user says: \"Say hello.\" ..."
+    }
+  }]
+}
+```
+
+Always read `choices[0].message.content`. The `reasoning_content` field contains the model's internal chain-of-thought and is not part of the OpenAI spec; most clients will ignore it automatically.
+
+For a compact reference designed to be dropped into an AI agent's context, see [AGENTS.md](AGENTS.md).
+
 
 ## Development
 
