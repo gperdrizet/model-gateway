@@ -108,6 +108,114 @@ async def test_valid_key_with_no_balance_returns_402(client: AsyncClient, regist
     assert r.status_code == 402
 
 
+async def test_responses_text_request_returns_response_shape(client: AsyncClient, registered_user, monkeypatch):
+    '''/v1/responses accepts text input and returns a minimal Responses payload.'''
+
+    import httpx
+    import app.app as gateway_app
+
+    async def fake_proxy_request(method, path, headers, body):
+        assert method == 'POST'
+        assert path == '/chat/completions'
+        assert 'authorization' in {k.lower() for k in headers}
+        assert body['messages'] == [{'role': 'user', 'content': 'Hello!'}]
+
+        return (
+            httpx.Response(200, json={
+                'id': 'chatcmpl_test123',
+                'created': 1234567890,
+                'model': 'gpt-oss-20b-mxfp4.gguf',
+                'choices': [{
+                    'index': 0,
+                    'message': {'role': 'assistant', 'content': 'Hello back!'},
+                    'finish_reason': 'stop',
+                }],
+                'usage': {
+                    'prompt_tokens': 5,
+                    'completion_tokens': 2,
+                    'total_tokens': 7,
+                },
+            }),
+            5,
+            2,
+        )
+
+    monkeypatch.setattr(gateway_app, 'proxy_request', fake_proxy_request)
+
+    r = await client.post(
+        '/v1/responses',
+        headers={'Authorization': f'Bearer {registered_user["key"]}'},
+        json={'model': 'default', 'input': 'Hello!'},
+    )
+
+    assert r.status_code == 200
+    data = r.json()
+    assert data['object'] == 'response'
+    assert data['output_text'] == 'Hello back!'
+    assert data['output'][0]['content'][0]['text'] == 'Hello back!'
+    assert data['usage']['input_tokens'] == 5
+    assert data['usage']['output_tokens'] == 2
+
+
+async def test_responses_rejects_multimodal_input(client: AsyncClient, registered_user):
+    '''/v1/responses rejects image input rather than pretending to support it.'''
+
+    r = await client.post(
+        '/v1/responses',
+        headers={'Authorization': f'Bearer {registered_user["key"]}'},
+        json={
+            'model': 'default',
+            'input': [{
+                'role': 'user',
+                'content': [
+                    {'type': 'input_text', 'text': 'What is in this image?'},
+                    {'type': 'input_image', 'image_url': 'https://example.com/cat.png'},
+                ],
+            }],
+        },
+    )
+
+    assert r.status_code == 400
+    assert 'text-only requests' in r.json()['error']['message']
+
+
+async def test_responses_streaming_translates_chat_sse(client: AsyncClient, registered_user, monkeypatch):
+    '''/v1/responses stream emits text delta events translated from chat SSE.'''
+
+    import app.app as gateway_app
+
+    async def fake_proxy_stream(method, path, headers, body):
+        assert method == 'POST'
+        assert path == '/chat/completions'
+        assert 'authorization' in {k.lower() for k in headers}
+        assert body['stream'] is True
+        yield (
+            b'data: {"id":"chatcmpl_1","model":"gpt-oss-20b-mxfp4.gguf","choices":[{"delta":{"content":"Hello"}}]}\n\n',
+            0,
+            0,
+        )
+        yield (
+            b'data: {"id":"chatcmpl_1","model":"gpt-oss-20b-mxfp4.gguf","choices":[{"delta":{"content":" world"}}]}\n\n',
+            0,
+            0,
+        )
+        yield b'', 4, 2
+
+    monkeypatch.setattr(gateway_app, 'proxy_stream', fake_proxy_stream)
+
+    r = await client.post(
+        '/v1/responses',
+        headers={'Authorization': f'Bearer {registered_user["key"]}'},
+        json={'model': 'default', 'input': 'Hello?', 'stream': True},
+    )
+
+    assert r.status_code == 200
+    assert 'response.created' in r.text
+    assert 'response.output_text.delta' in r.text
+    assert 'response.completed' in r.text
+    assert 'Hello world' in r.text
+
+
 # ── Dashboard ───────────────────────────────────────────────────────────────
 
 async def test_dashboard_valid_key(client: AsyncClient, registered_user):

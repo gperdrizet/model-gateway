@@ -4,6 +4,10 @@ Base URL: `https://promptlyapi.com`
 Auth: `Authorization: Bearer sk-<your-key>`
 Protocol: OpenAI-compatible REST
 
+Supported compatibility surfaces:
+- `/v1/chat/completions` (full primary path)
+- `/v1/responses` (text-generation profile)
+
 ## Chat completions
 
 ```bash
@@ -19,6 +23,20 @@ curl https://promptlyapi.com/v1/chat/completions \
 The `model` field is accepted but ignored; the server uses whichever model is loaded. The actual model name is returned in the response (e.g. `gpt-oss-20b-mxfp4.gguf`).
 
 **Context window:** 16,384 tokens per request (65,536 total across 4 parallel slots).
+
+## Responses API (text profile)
+
+```bash
+curl https://promptlyapi.com/v1/responses \
+  -H "Authorization: Bearer sk-your-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "default",
+    "input": "Hello!"
+  }'
+```
+
+This endpoint supports text-generation requests only. Multimodal input and tools are rejected with a clear `400` error.
 
 ## Response format
 
@@ -68,19 +86,41 @@ curl https://promptlyapi.com/v1/models \
 
 ## Python (OpenAI SDK)
 
+This is the current `OpenAI(...)` client pattern. Both examples below are supported.
+
 ```python
+import os
+
 from openai import OpenAI
 
 client = OpenAI(
     base_url="https://promptlyapi.com/v1",
-    api_key="sk-your-key",
+    api_key=os.environ["PROMPTLY_API_KEY"],
 )
 
-response = client.chat.completions.create(
+completion = client.chat.completions.create(
     model="default",
     messages=[{"role": "user", "content": "Hello!"}],
 )
 
 # Use .content — ignore .reasoning_content if present
-print(response.choices[0].message.content)
+print(completion.choices[0].message.content)
+```
+
+```python
+import os
+
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://promptlyapi.com/v1",
+    api_key=os.environ["PROMPTLY_API_KEY"],
+)
+
+response = client.responses.create(
+    model="default",
+    input="Hello!",
+)
+
+print(response.output_text)
 ```
