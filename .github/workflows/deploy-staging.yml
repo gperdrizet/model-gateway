@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
 
+concurrency:
+  group: staging-deploy
+  cancel-in-progress: true
+
 jobs:
   deploy-staging:
     runs-on: ubuntu-latest
@@ -43,7 +47,12 @@ jobs:
           COMPOSE_PROJECT_NAME=staging docker compose \
             -f docker-compose.yml \
             -f docker-compose.staging.yml \
-            up --build -d --remove-orphans
+            down --remove-orphans || true
+
+          COMPOSE_PROJECT_NAME=staging docker compose \
+            -f docker-compose.yml \
+            -f docker-compose.staging.yml \
+            up --build -d
 
           sleep 15
           curl -fsS http://100.64.0.1:8505/health | grep '"status":"ok"'

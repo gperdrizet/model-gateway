@@ -20,7 +20,7 @@ https://gperdrizet.github.io/model-gateway/
 ## How it works
 
 - Users register at **[https://promptlyapi.com](https://promptlyapi.com)** and receive a trial allocation (100k tokens, 7 days)
-- API calls are made to `https://promptlyapi.com/v1` with a Bearer token
+- API calls are made to `https://promptlyapi.com/v1` with a bearer token
 - Each request deducts tokens from the user's balance; requests are rejected with 402 when exhausted
 - Users can top up via Stripe (card) or BTCPay Server (Bitcoin)
 - All usage is recorded for metering and display on the dashboard
