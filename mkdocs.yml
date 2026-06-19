@@ -1,0 +1,25 @@
+site_name: Promptly API Gateway
+site_description: Documentation for the Promptly API gateway
+site_url: https://gperdrizet.github.io/model-gateway/
+repo_url: https://github.com/gperdrizet/model-gateway
+repo_name: gperdrizet/model-gateway
+
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.sections
+    - navigation.expand
+    - content.code.copy
+    - search.suggest
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+
+nav:
+  - Overview: index.md
+  - API quickstart: api-quickstart.md
+  - Responses API profile: responses-api-profile.md
+  - Operations: operations.md
