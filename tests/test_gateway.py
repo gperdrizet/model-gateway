@@ -12,7 +12,7 @@ from httpx import AsyncClient
 pytestmark = pytest.mark.asyncio
 
 
-# ── Health ─────────────────────────────────────────────────────────────────
+# --- Health ---
 
 async def test_health(client: AsyncClient):
     '''Health endpoint returns 200 and {status: ok}.'''
@@ -23,7 +23,7 @@ async def test_health(client: AsyncClient):
     assert r.json() == {'status': 'ok'}
 
 
-# ── Registration ────────────────────────────────────────────────────────────
+# --- Registration ---
 
 async def test_register_page(client: AsyncClient):
     '''Registration page renders and mentions the trial token amount.'''
@@ -60,7 +60,7 @@ async def test_register_existing_user_same_response(client: AsyncClient):
     assert r2.status_code == 200
 
 
-# ── Auth ────────────────────────────────────────────────────────────────────
+# --- Auth ---
 
 async def test_no_key_returns_401(client: AsyncClient):
     '''Request with no Authorization header is rejected with 401.'''
@@ -71,7 +71,7 @@ async def test_no_key_returns_401(client: AsyncClient):
 
 
 async def test_bad_key_returns_401(client: AsyncClient):
-    '''Request with an unrecognised API key is rejected with 401.'''
+    '''Request with an unrecognized API key is rejected with 401.'''
 
     r = await client.post(
         '/v1/chat/completions',
@@ -216,7 +216,7 @@ async def test_responses_streaming_translates_chat_sse(client: AsyncClient, regi
     assert 'Hello world' in r.text
 
 
-# ── Dashboard ───────────────────────────────────────────────────────────────
+# --- Dashboard ---
 
 async def test_dashboard_valid_key(client: AsyncClient, registered_user):
     '''Dashboard returns 200 and shows the user email when a valid key is supplied.'''
@@ -238,7 +238,7 @@ async def test_dashboard_bad_key_redirects(client: AsyncClient, _db_session):
     assert r.status_code in (302, 307)
 
 
-# ── Admin panel ──────────────────────────────────────────────────────────────
+# --- Admin panel ---
 
 async def test_admin_bad_key_forbidden(client: AsyncClient, _db_session):
     '''Admin panel returns 403 when the wrong admin key is supplied.'''
@@ -329,7 +329,7 @@ async def test_admin_delete_user(client: AsyncClient, registered_user):
         assert user is None
 
 
-# ── Checkout (payment providers not configured → 503) ───────────────────────
+# --- Checkout (payment providers not configured, returns 503) ---
 
 async def test_checkout_stripe_not_configured(client: AsyncClient, registered_user):
     '''Checkout returns 503 when Stripe is not configured (placeholder keys).'''

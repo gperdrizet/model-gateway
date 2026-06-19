@@ -103,7 +103,7 @@ completion = client.chat.completions.create(
     messages=[{"role": "user", "content": "Hello!"}],
 )
 
-# Use .content — ignore .reasoning_content if present
+# Use .content; ignore .reasoning_content if present
 print(completion.choices[0].message.content)
 ```
 

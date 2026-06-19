@@ -207,11 +207,11 @@ Tests use an in-memory SQLite database; no Docker required. All 17 tests should 
 ### Production stack on the gateway server
 
 ```
-/opt/model-gateway/          ← production git repo + .env
-/opt/model-gateway-staging/  ← staging git repo + .env
+/opt/model-gateway/          # production git repo and .env
+/opt/model-gateway-staging/  # staging git repo and .env
 ```
 
-nginx proxies `https://<your-domain>` → `http://127.0.0.1:8503` (production gateway).
+nginx proxies `https://<your-domain>` to `http://127.0.0.1:8503` (production gateway).
 
 ### Environment files
 
@@ -237,7 +237,7 @@ Staging `.env` is the same but with `GATEWAY_PORT=8505`, `ADMINER_PORT=8506`, an
 ### Workflow
 
 1. Work on `dev`, commit and push changes
-2. Open a pull request `dev → main`
+2. Open a pull request from `dev` to `main`
 3. GitHub Actions runs the test suite automatically on the PR
 4. Branch protection blocks merge until all tests pass
 5. Merge the PR; staging deploy triggers automatically
@@ -251,7 +251,7 @@ Staging `.env` is the same but with `GATEWAY_PORT=8505`, `ADMINER_PORT=8506`, an
 
 ### Production deploy
 
-Manual trigger only: go to **Actions → Deploy to Production → Run workflow**, enter a version number (e.g. `1.0.0`) and type `deploy` to confirm.
+Manual trigger only: go to **Actions, then Deploy to Production, then Run workflow**, enter a version number (e.g. `1.0.0`) and type `deploy` to confirm.
 
 The workflow:
 1. SSHs to the gateway server, pulls the latest commit into `/opt/model-gateway/`
