@@ -49,6 +49,14 @@ jobs:
             -f docker-compose.staging.yml \
             down --remove-orphans || true
 
+          # Force-remove by name in case containers exist under a different
+          # compose project label and were not cleaned up by down above.
+          docker rm -f \
+            model-gateway-db-staging \
+            model-gateway-api-staging \
+            model-gateway-adminer-staging \
+            2>/dev/null || true
+
           COMPOSE_PROJECT_NAME=staging docker compose \
             -f docker-compose.yml \
             -f docker-compose.staging.yml \
