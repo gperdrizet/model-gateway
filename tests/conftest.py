@@ -8,7 +8,7 @@ import os
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 
-# ── Set env vars before importing the app ────────────────────────────────────
+# --- Set env vars before importing the app ---
 os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
 os.environ.setdefault("LLAMA_BASE_URL", "http://llama-mock")
 os.environ.setdefault("LLAMA_API_KEY", "test-llama-key")
@@ -35,7 +35,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 from datetime import datetime, timedelta, timezone
 
 
-# ── Fixtures ─────────────────────────────────────────────────────────────────
+# --- Fixtures ---
 
 
 @pytest_asyncio.fixture(scope='function')

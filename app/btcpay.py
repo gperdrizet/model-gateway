@@ -7,7 +7,7 @@ BTCPay Server setup (run once on gatekeeper):
   1. docker compose -f docker-compose.btcpay.yml up -d
   2. Open http://100.64.0.1:23000, create account + store
   3. Store Settings -> Webhooks -> Add:
-       URL: https://model.perdrizet.org/btcpay/webhook
+      URL: https://promptlyapi.com/btcpay/webhook
        Events: InvoiceSettled
        Copy the secret -> BTCPAY_WEBHOOK_SECRET in .env
   4. Store Settings -> Access Tokens -> Create:

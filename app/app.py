@@ -6,6 +6,7 @@ llama-server, records usage (token counts only - no content).
 '''
 
 import logging
+import json
 import os
 import secrets
 import time
@@ -23,7 +24,7 @@ import stripe
 from fastapi import FastAPI, Form, Query, Request, Response
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import select, text
+from sqlalchemy import select, text as sql_text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from .db import (
@@ -315,7 +316,7 @@ async def dashboard(request: Request, key: str = Query(...)):
 
         # Active trial info
         trial_result = await session.execute(
-            text(
+            sql_text(
                 "SELECT remaining_tokens, expires_at FROM trial_tokens "
                 "WHERE user_id = :uid AND expires_at > :now AND remaining_tokens > 0 "
                 "ORDER BY expires_at ASC LIMIT 1"
@@ -342,7 +343,7 @@ async def dashboard(request: Request, key: str = Query(...)):
 
         # 30-day usage summary
         summary = await session.execute(
-            text(
+            sql_text(
                 "SELECT COALESCE(SUM(input_tokens),0) AS inp, "
                 "COALESCE(SUM(output_tokens),0) AS out, "
                 "COUNT(*) AS reqs "
@@ -362,7 +363,7 @@ async def dashboard(request: Request, key: str = Query(...)):
         _date_expr = "DATE(timestamp)" if _sqlite else "DATE(timestamp AT TIME ZONE 'UTC')"
 
         daily = await session.execute(
-            text(
+            sql_text(
                 f"SELECT {_date_expr} AS day, "
                 "SUM(input_tokens) AS inp, SUM(output_tokens) AS out "
                 "FROM usage_events "
@@ -561,10 +562,9 @@ async def stripe_webhook(request: Request):
     sig = request.headers.get('stripe-signature', '')
 
     try:
-        import stripe as _stripe
         event = verify_webhook(payload, sig)
 
-    except _stripe.SignatureVerificationError:
+    except stripe.SignatureVerificationError:
         return JSONResponse(status_code=400, content={'error': 'invalid signature'})
 
     except RuntimeError as exc:
@@ -629,6 +629,360 @@ async def _fulfill_checkout(session_obj: dict) -> None:
 
         await db.commit()
         log.info("Credited %s tokens to user %s (session %s)", tokens, user_id, session_id)
+
+
+# ── Responses API shim ──────────────────────────────────────────────────────
+
+def _responses_error(message: str, status_code: int = 400) -> JSONResponse:
+    '''Return an OpenAI-style error payload for /v1/responses validation errors.'''
+
+    return JSONResponse(
+        status_code=status_code,
+        content={'error': {'message': message, 'type': 'invalid_request_error'}},
+    )
+
+
+def _response_object_id(chat_id: str | None) -> str:
+    '''Return a stable response id derived from the upstream chat completion id.'''
+
+    if chat_id:
+        return chat_id.replace('chatcmpl', 'resp', 1)
+
+    return f'resp_{int(time.time() * 1000)}'
+
+
+def _message_content_to_text(content: str | list | dict | None) -> str:
+    '''Extract plain text content from a supported Responses API content value.'''
+
+    if isinstance(content, str):
+        return content
+
+    if isinstance(content, list):
+        parts: list[str] = []
+        for item in content:
+            if not isinstance(item, dict):
+                raise ValueError('Promptly /v1/responses currently supports text-only content.')
+
+            item_type = item.get('type')
+            if item_type in ('input_text', 'output_text', 'text'):
+                text_value = item.get('text')
+                if not isinstance(text_value, str):
+                    raise ValueError('Text content items must include a string `text` field.')
+                parts.append(text_value)
+                continue
+
+            raise ValueError(
+                'Promptly /v1/responses currently supports text-only requests. '
+                'Multimodal inputs and tools are not supported.'
+            )
+
+        return ''.join(parts)
+
+    raise ValueError('Promptly /v1/responses currently supports text-only content.')
+
+
+def _responses_input_to_messages(input_value: str | list) -> list[dict[str, str]]:
+    '''Convert a supported Responses API input shape into chat completion messages.'''
+
+    if isinstance(input_value, str):
+        return [{'role': 'user', 'content': input_value}]
+
+    if not isinstance(input_value, list):
+        raise ValueError('`input` must be a string or a list of text messages.')
+
+    messages: list[dict[str, str]] = []
+    for item in input_value:
+        if not isinstance(item, dict):
+            raise ValueError('Each item in `input` must be an object.')
+
+        item_type = item.get('type')
+        if item_type and item_type != 'message':
+            raise ValueError(
+                'Promptly /v1/responses currently supports message-style text input only.'
+            )
+
+        role = item.get('role', 'user')
+        if role not in ('system', 'developer', 'user', 'assistant'):
+            raise ValueError(f'Unsupported message role: {role}')
+
+        content_text = _message_content_to_text(item.get('content'))
+        messages.append({'role': role, 'content': content_text})
+
+    return messages
+
+
+def _responses_to_chat_body(body: dict) -> dict:
+    '''Translate a supported Responses API request into a chat completions request.'''
+
+    unsupported_fields = [
+        field for field in ('tools', 'tool_choice', 'parallel_tool_calls', 'modalities')
+        if body.get(field)
+    ]
+    if unsupported_fields:
+        raise ValueError(
+            'Promptly /v1/responses currently supports text-only requests. '
+            f'Unsupported fields: {", ".join(unsupported_fields)}.'
+        )
+
+    if 'input' not in body:
+        raise ValueError('`input` is required.')
+
+    messages: list[dict[str, str]] = []
+    instructions = body.get('instructions')
+    if instructions is not None:
+        if not isinstance(instructions, str):
+            raise ValueError('`instructions` must be a string.')
+        messages.append({'role': 'system', 'content': instructions})
+
+    messages.extend(_responses_input_to_messages(body['input']))
+
+    chat_body = {
+        'model': body.get('model', 'default'),
+        'messages': messages,
+        'stream': bool(body.get('stream', False)),
+    }
+
+    if 'temperature' in body:
+        chat_body['temperature'] = body['temperature']
+    if 'max_output_tokens' in body:
+        chat_body['max_tokens'] = body['max_output_tokens']
+
+    return chat_body
+
+
+def _chat_to_responses_payload(data: dict) -> dict:
+    '''Translate a chat completion response into a minimal Responses API payload.'''
+
+    choice = (data.get('choices') or [{}])[0]
+    message = choice.get('message') or {}
+    text_content = message.get('content', '') or ''
+    response_id = _response_object_id(data.get('id'))
+
+    return {
+        'id': response_id,
+        'object': 'response',
+        'created_at': data.get('created'),
+        'model': data.get('model'),
+        'status': 'completed',
+        'output': [{
+            'id': f'msg_{response_id}',
+            'type': 'message',
+            'role': 'assistant',
+            'content': [{
+                'type': 'output_text',
+                'text': text_content,
+            }],
+        }],
+        'output_text': text_content,
+        'usage': {
+            'input_tokens': (data.get('usage') or {}).get('prompt_tokens', 0),
+            'output_tokens': (data.get('usage') or {}).get('completion_tokens', 0),
+            'total_tokens': (data.get('usage') or {}).get('total_tokens', 0),
+        },
+    }
+
+
+def _parse_chat_stream_chunk(chunk: bytes) -> tuple[str | None, str | None]:
+    '''Extract a text delta and model name from a chat-completions SSE chunk.'''
+
+    try:
+        chunk_text = chunk.decode('utf-8', errors='ignore')
+    except UnicodeDecodeError:
+        return None, None
+
+    delta_text = None
+    model_name = None
+    for line in chunk_text.splitlines():
+        if not line.startswith('data:'):
+            continue
+        payload = line[5:].strip()
+        if payload == '[DONE]':
+            continue
+        try:
+            data = json.loads(payload)
+        except ValueError:
+            continue
+
+        model_name = data.get('model') or model_name
+        choices = data.get('choices') or []
+        if not choices:
+            continue
+        delta = choices[0].get('delta') or {}
+        if isinstance(delta.get('content'), str):
+            delta_text = delta['content']
+
+    return delta_text, model_name
+
+
+def _responses_sse(payload: dict) -> bytes:
+    '''Encode a Responses API event payload as SSE bytes.'''
+
+    return f'data: {json.dumps(payload)}\n\n'.encode()
+
+
+@app.post('/v1/responses')
+async def responses_api(request: Request):
+    '''Text-only shim for the OpenAI Responses API backed by chat completions.'''
+
+    client_ip = request.client.host if request.client else ''
+
+    if not _check_ip_inference_rate_limit(client_ip):
+        return JSONResponse(
+            status_code=429,
+            content={'error': {
+                'message': 'Too many requests from your IP.',
+                'type': 'rate_limit_error'
+            }},
+        )
+
+    user, session = await authenticate(request)
+    if user is None:
+        return JSONResponse(
+            status_code=401,
+            content={'error': {'message': 'Invalid or missing API key.', 'type': 'auth_error'}},
+        )
+
+    if not _check_user_inference_rate_limit(user.api_key_prefix):
+        await session.close()
+        return JSONResponse(
+            status_code=429,
+            content={'error': {
+                'message': 'Rate limit exceeded. Slow down and try again.',
+                'type': 'rate_limit_error'
+            }},
+        )
+
+    try:
+        body = await request.json()
+    except ValueError:
+        await session.close()
+        return _responses_error('Invalid JSON body.')
+
+    if not isinstance(body, dict):
+        await session.close()
+        return _responses_error('JSON body must be an object.')
+
+    try:
+        chat_body = _responses_to_chat_body(body)
+    except ValueError as exc:
+        await session.close()
+        return _responses_error(str(exc))
+
+    async with session:
+        available = await total_available_tokens(session, user)
+        if available <= 0:
+            return JSONResponse(
+                status_code=402,
+                content={
+                    'error': {
+                        'message': 'Insufficient token balance. Purchase more tokens at '
+                                   f"{os.environ.get('BASE_URL', '')}/buy",
+                        'type': 'insufficient_quota',
+                    }
+                },
+            )
+
+        headers = dict(request.headers)
+
+        if chat_body.get('stream'):
+            response_id = f'resp_{int(time.time() * 1000)}'
+            created_at = int(time.time())
+            final_model = chat_body.get('model', 'default')
+            deltas: list[str] = []
+            final_input_tokens = 0
+            final_output_tokens = 0
+
+            async def generate():
+                nonlocal final_model, final_input_tokens, final_output_tokens
+
+                yield _responses_sse({
+                    'type': 'response.created',
+                    'response': {
+                        'id': response_id,
+                        'object': 'response',
+                        'created_at': created_at,
+                        'model': final_model,
+                        'status': 'in_progress',
+                    },
+                })
+
+                async for chunk, in_tok, out_tok in proxy_stream(
+                    'POST', '/chat/completions', headers, chat_body,
+                ):
+                    if in_tok or out_tok:
+                        final_input_tokens, final_output_tokens = in_tok, out_tok
+                        continue
+
+                    delta_text, model_name = _parse_chat_stream_chunk(chunk)
+                    if model_name:
+                        final_model = model_name
+                    if delta_text:
+                        deltas.append(delta_text)
+                        yield _responses_sse({
+                            'type': 'response.output_text.delta',
+                            'delta': delta_text,
+                        })
+
+                final_text = ''.join(deltas)
+                yield _responses_sse({
+                    'type': 'response.output_text.done',
+                    'text': final_text,
+                })
+
+                yield _responses_sse({
+                    'type': 'response.completed',
+                    'response': {
+                        'id': response_id,
+                        'object': 'response',
+                        'created_at': created_at,
+                        'model': final_model,
+                        'status': 'completed',
+                        'output': [{
+                            'id': f'msg_{response_id}',
+                            'type': 'message',
+                            'role': 'assistant',
+                            'content': [{
+                                'type': 'output_text',
+                                'text': final_text,
+                            }],
+                        }],
+                        'output_text': final_text,
+                        'usage': {
+                            'input_tokens': final_input_tokens,
+                            'output_tokens': final_output_tokens,
+                            'total_tokens': final_input_tokens + final_output_tokens,
+                        },
+                    },
+                })
+
+                await _record_usage(session, user, final_input_tokens, final_output_tokens, chat_body)
+                await session.close()
+
+            return StreamingResponse(generate(), media_type='text/event-stream')
+
+        upstream, input_tokens, output_tokens = await proxy_request(
+            'POST', '/chat/completions', headers, chat_body,
+        )
+
+        if upstream.status_code >= 400:
+            return Response(
+                content=upstream.content,
+                status_code=upstream.status_code,
+                headers=dict(upstream.headers),
+                media_type=upstream.headers.get('content-type'),
+            )
+
+        await _record_usage(session, user, input_tokens, output_tokens, chat_body)
+
+        try:
+            chat_data = upstream.json()
+        except ValueError:
+            return JSONResponse(
+                status_code=502,
+                content={'error': {'message': 'Upstream returned invalid JSON.'}},
+            )
+
+        return JSONResponse(_chat_to_responses_payload(chat_data))
 
 
 # ── Inference proxy ──────────────────────────────────────────────────────────
@@ -900,7 +1254,7 @@ async def admin_panel(request: Request, key: str = Query(default='')):
 
         # Active trial counts per user
         trial_result = await session.execute(
-            text(
+            sql_text(
                 "SELECT user_id, SUM(remaining_tokens) AS rem, MIN(expires_at) AS exp "
                 "FROM trial_tokens WHERE expires_at > :now AND remaining_tokens > 0 "
                 "GROUP BY user_id"
@@ -912,7 +1266,7 @@ async def admin_panel(request: Request, key: str = Query(default='')):
 
         # 30-day usage per user
         usage_result = await session.execute(
-            text(
+            sql_text(
                 "SELECT user_id, "
                 "COALESCE(SUM(input_tokens+output_tokens),0) AS total "
                 "FROM usage_events WHERE timestamp >= :since GROUP BY user_id"
@@ -927,13 +1281,13 @@ async def admin_panel(request: Request, key: str = Query(default='')):
         total_paid = sum(u.balance_tokens for u in users_rows)
     
         requests_30d_r = await session.execute(
-            text("SELECT COUNT(*) FROM usage_events WHERE timestamp >= :since"),
+            sql_text("SELECT COUNT(*) FROM usage_events WHERE timestamp >= :since"),
             {"since": thirty_days_ago},
         )
     
         requests_30d = requests_30d_r.scalar()
         tokens_30d_r = await session.execute(
-            text(
+            sql_text(
                 "SELECT COALESCE(SUM(input_tokens+output_tokens),0) "
                 "FROM usage_events WHERE timestamp >= :since"
             ),
@@ -1025,17 +1379,17 @@ async def admin_delete(
         email = user.email
 
         await session.execute(
-            text('DELETE FROM trial_tokens WHERE user_id = :uid'),
+            sql_text('DELETE FROM trial_tokens WHERE user_id = :uid'),
             {'uid': user_id}
         )
 
         await session.execute(
-            text('DELETE FROM usage_events WHERE user_id = :uid'),
+            sql_text('DELETE FROM usage_events WHERE user_id = :uid'),
             {'uid': user_id}
         )
 
         await session.execute(
-            text('DELETE FROM token_purchases WHERE user_id = :uid'),
+            sql_text('DELETE FROM token_purchases WHERE user_id = :uid'),
             {'uid': user_id}
         )
 

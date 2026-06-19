@@ -11,10 +11,16 @@
 
 An authenticated, metered API gateway for LLM inference.
 
+## Documentation
+
+Full documentation is published at:
+
+https://gperdrizet.github.io/model-gateway/
+
 ## How it works
 
 - Users register at **[https://promptlyapi.com](https://promptlyapi.com)** and receive a trial allocation (100k tokens, 7 days)
-- API calls are made to `/v1/...` with a Bearer token, compatible with the OpenAI client SDK
+- API calls are made to `https://promptlyapi.com/v1` with a Bearer token
 - Each request deducts tokens from the user's balance; requests are rejected with 402 when exhausted
 - Users can top up via Stripe (card) or BTCPay Server (Bitcoin)
 - All usage is recorded for metering and display on the dashboard
@@ -30,45 +36,50 @@ An authenticated, metered API gateway for LLM inference.
 
 ### 1. Register
 
-Go to **[https://promptlyapi.com](https://promptlyapi.com)** and click **Create an account**, or go directly to **[https://promptlyapi.com/register](https://promptlyapi.com/register)**. Enter your email address and your API key will arrive by email within a few seconds.
+Go to **[https://promptlyapi.com](https://promptlyapi.com)** and click **Create an account**. Enter your email address and your API key will arrive by email within a few seconds.
 
 Your account starts with a **free trial: 100,000 tokens valid for 7 days**.
 
-> **Lost your key?** Go back to [https://promptlyapi.com/register](https://promptlyapi.com/register) and enter the same email address. A new key will be issued and sent to you — your token balance is preserved, but the old key is immediately invalidated.
+> **Lost your key?** Go back to [https://promptlyapi.com/register](https://promptlyapi.com/register) and enter the same email address. A new key will be issued and sent to you; your token balance is preserved, but the old key is immediately invalidated.
 
 ### 2. Make your first request
 
-The API is compatible with the OpenAI Python SDK, just point it at the gateway:
+The API is compatible with the current OpenAI Python SDK. Promptly supports both OpenAI-style Chat Completions (`/v1/chat/completions`) and a text-focused Responses API profile (`/v1/responses`).
+
+Use this pattern with the Python SDK:
 
 ```python
+import os
 from openai import OpenAI
 
 client = OpenAI(
-    base_url='https://promptlyapi.com/v1',
-    api_key='sk-your-key-here',
+    base_url="https://promptlyapi.com/v1",
+    api_key=os.environ["PROMPTLY_API_KEY"],
 )
 
-response = client.chat.completions.create(
-    model='default',
-    messages=[{'role': 'user', 'content': 'Hello!'}],
+completion = client.chat.completions.create(
+    model="default",
+    messages=[{"role": "user", "content": "Hello!"}],
 )
 
-print(response.choices[0].message.content)
+print(completion.choices[0].message.content)
 ```
 
 Or with **LangChain**:
 
 ```python
+import os
+
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage
 
 llm = ChatOpenAI(
-    base_url='https://promptlyapi.com/v1',
-    api_key='sk-your-key-here',
-    model='default',
+    base_url="https://promptlyapi.com/v1",
+    api_key=os.environ["PROMPTLY_API_KEY"],
+    model="default",
 )
 
-response = llm.invoke([HumanMessage(content='Hello!')])
+response = llm.invoke([HumanMessage(content="Hello!")])
 print(response.content)
 ```
 
@@ -98,6 +109,52 @@ When your trial runs out, top up via **Stripe** (card) or **BTCPay Server** (Bit
 - Streaming is supported (`"stream": true`)
 - Requests are rejected with **402 Payment Required** when your balance is exhausted
 - Rate limits: 120 requests/min per IP, 60 requests/min per API key
+
+### Responses API compatibility profile
+
+Promptly supports a text-generation profile of the OpenAI Responses API at `/v1/responses`.
+
+Supported:
+
+- `input` as a plain string
+- `input` as message-style text content
+- `instructions` as a system-style instruction string
+- `stream: true` for text output events
+- Usage reporting in the response payload
+
+Not currently enabled:
+
+- Multimodal input (`input_image`, audio, or other non-text content types)
+- Tool calling and hosted tool features (`tools`, `tool_choice`, `parallel_tool_calls`)
+
+Unsupported features are rejected with a clear `400` error instead of being silently ignored.
+
+### Model name and response format
+
+The `model` field in your request is accepted but ignored; the server always uses whichever model is currently loaded. The model name returned in the response reflects the actual loaded model (e.g. `gpt-oss-20b-mxfp4.gguf`). You can query the current model name with:
+
+```bash
+curl https://promptlyapi.com/v1/models \
+  -H "Authorization: Bearer sk-your-key-here"
+```
+
+The currently loaded model is a reasoning model. Responses include a non-standard `reasoning_content` field alongside the standard `content` field:
+
+```json
+{
+  "choices": [{
+    "message": {
+      "role": "assistant",
+      "content": "Hello!",
+      "reasoning_content": "The user says: \"Say hello.\" ..."
+    }
+  }]
+}
+```
+
+Always read `choices[0].message.content`. The `reasoning_content` field contains the model's internal chain-of-thought and is not part of the OpenAI spec; most clients will ignore it automatically.
+
+For a compact reference designed to be dropped into an AI agent's context, see [AGENTS.md](AGENTS.md).
 
 
 ## Development
@@ -150,11 +207,11 @@ Tests use an in-memory SQLite database; no Docker required. All 17 tests should 
 ### Production stack on the gateway server
 
 ```
-/opt/model-gateway/          ← production git repo + .env
-/opt/model-gateway-staging/  ← staging git repo + .env
+/opt/model-gateway/          # production git repo and .env
+/opt/model-gateway-staging/  # staging git repo and .env
 ```
 
-nginx proxies `https://<your-domain>` → `http://127.0.0.1:8503` (production gateway).
+nginx proxies `https://<your-domain>` to `http://127.0.0.1:8503` (production gateway).
 
 ### Environment files
 
@@ -180,7 +237,7 @@ Staging `.env` is the same but with `GATEWAY_PORT=8505`, `ADMINER_PORT=8506`, an
 ### Workflow
 
 1. Work on `dev`, commit and push changes
-2. Open a pull request `dev → main`
+2. Open a pull request from `dev` to `main`
 3. GitHub Actions runs the test suite automatically on the PR
 4. Branch protection blocks merge until all tests pass
 5. Merge the PR; staging deploy triggers automatically
@@ -194,7 +251,7 @@ Staging `.env` is the same but with `GATEWAY_PORT=8505`, `ADMINER_PORT=8506`, an
 
 ### Production deploy
 
-Manual trigger only: go to **Actions → Deploy to Production → Run workflow**, enter a version number (e.g. `1.0.0`) and type `deploy` to confirm.
+Manual trigger only: go to **Actions, then Deploy to Production, then Run workflow**, enter a version number (e.g. `1.0.0`) and type `deploy` to confirm.
 
 The workflow:
 1. SSHs to the gateway server, pulls the latest commit into `/opt/model-gateway/`

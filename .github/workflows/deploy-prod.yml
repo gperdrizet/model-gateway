@@ -31,7 +31,7 @@ jobs:
   deploy-prod:
     needs: guard
     runs-on: ubuntu-latest
-    environment: production      # requires manual approval in GitHub → Settings → Environments
+    environment: production      # requires manual approval in GitHub: Settings, then Environments
     steps:
       - uses: actions/checkout@v4.3.1
 

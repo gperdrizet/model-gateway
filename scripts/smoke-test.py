@@ -29,7 +29,7 @@ import urllib.request
 import json
 
 
-# ── Helpers ──────────────────────────────────────────────────────────────────
+# --- Helpers ---
 
 _DOTENV_KEYS = ('ADMIN_KEY', 'SMOKE_API_KEY')
 
@@ -86,18 +86,18 @@ BOLD   = '\033[1m'
 DIM    = '\033[2m'
 
 
-def _col(colour: str, text: str) -> str:
-    return f'{colour}{text}{RESET}' if sys.stdout.isatty() else text
+def _col(color: str, text: str) -> str:
+    return f'{color}{text}{RESET}' if sys.stdout.isatty() else text
 
 
 def ok(label: str, detail: str = '') -> None:
     suffix = f'  {_col(DIM, detail)}' if detail else ''
-    print(f'  {_col(GREEN, "✓")} {label}{suffix}')
+    print(f'  {_col(GREEN, "OK")} {label}{suffix}')
 
 
 def fail(label: str, detail: str = '') -> None:
     suffix = f'\n    {_col(DIM, detail)}' if detail else ''
-    print(f'  {_col(RED, "✗")} {label}{suffix}')
+    print(f'  {_col(RED, "FAIL")} {label}{suffix}')
 
 
 def skip(label: str, detail: str = '') -> None:
@@ -151,10 +151,10 @@ def request(
         return exc.code, exc.read(), dict(exc.headers)
 
 
-# ── Test cases ───────────────────────────────────────────────────────────────
+# --- Test cases ---
 
 def test_health(base: str, verbose: bool) -> bool:
-    '''GET /health → 200 {"status":"ok"}.'''
+    '''GET /health returns 200 {"status":"ok"}.'''
 
     status, body, _ = request(f'{base}/health')
 
@@ -162,12 +162,12 @@ def test_health(base: str, verbose: bool) -> bool:
         ok('health endpoint', f'HTTP {status}')
         return True
 
-    fail('health endpoint', f'HTTP {status} — {body[:200]}')
+    fail('health endpoint', f'HTTP {status}: {body[:200]}')
     return False
 
 
 def test_register_page(base: str, verbose: bool) -> bool:
-    '''GET /register → 200 HTML.'''
+    '''GET /register returns 200 HTML.'''
 
     status, body, _ = request(f'{base}/register')
 
@@ -180,7 +180,7 @@ def test_register_page(base: str, verbose: bool) -> bool:
 
 
 def test_register_new_user(base: str, email: str, verbose: bool) -> bool:
-    '''POST /register with a fresh email → 200 confirmation page.'''
+    '''POST /register with a fresh email returns 200 confirmation page.'''
 
     status, body, _ = request(
         f'{base}/register',
@@ -198,7 +198,7 @@ def test_register_new_user(base: str, email: str, verbose: bool) -> bool:
 
 
 def test_register_duplicate(base: str, email: str, verbose: bool) -> bool:
-    '''POST /register with same email again → still 200 (anti-enumeration).'''
+    '''POST /register with same email again returns 200 (anti-enumeration).'''
 
     status, body, _ = request(
         f'{base}/register',
@@ -216,7 +216,7 @@ def test_register_duplicate(base: str, email: str, verbose: bool) -> bool:
 
 
 def test_no_key_401(base: str, verbose: bool) -> bool:
-    '''POST /v1/chat/completions with no key → 401.'''
+    '''POST /v1/chat/completions with no key returns 401.'''
 
     status, body, _ = request(
         f'{base}/v1/chat/completions',
@@ -225,7 +225,7 @@ def test_no_key_401(base: str, verbose: bool) -> bool:
     )
 
     if status == 401:
-        ok('missing key → 401')
+        ok('missing key: 401')
         return True
 
     fail('missing key check', f'expected 401, got {status}')
@@ -233,7 +233,7 @@ def test_no_key_401(base: str, verbose: bool) -> bool:
 
 
 def test_bad_key_401(base: str, verbose: bool) -> bool:
-    '''POST /v1/chat/completions with garbage key → 401.'''
+    '''POST /v1/chat/completions with garbage key returns 401.'''
 
     status, _, _ = request(
         f'{base}/v1/chat/completions',
@@ -243,7 +243,7 @@ def test_bad_key_401(base: str, verbose: bool) -> bool:
     )
 
     if status == 401:
-        ok('invalid key → 401')
+        ok('invalid key: 401')
         return True
 
     fail('invalid key check', f'expected 401, got {status}')
@@ -276,12 +276,12 @@ def test_grant_and_infer(
     )
 
     if status not in (200, 302, 303):
-        fail('admin grant tokens', f'HTTP {status} — {body[:200]}')
+        fail('admin grant tokens', f'HTTP {status}: {body[:200]}')
         return False, False
 
     ok('admin grant tokens', '10k tokens, 1 day')
 
-    # Actual inference — this call goes all the way to llama-server
+    # Actual inference: this call goes all the way to llama-server
     status, body, _ = request(
         f'{base}/v1/chat/completions',
         method='POST',
@@ -306,15 +306,15 @@ def test_grant_and_infer(
 
     # 402 means the grant didn't propagate yet or the model server is down
     if status == 402:
-        fail('inference → 402 (token balance problem or model server unreachable)')
+        fail('inference: 402 (token balance problem or model server unreachable)')
         return True, False
 
-    fail('inference request', f'HTTP {status} — {body[:300]}')
+    fail('inference request', f'HTTP {status}: {body[:300]}')
     return True, False
 
 
 def test_dashboard(base: str, api_key: str, email: str, verbose: bool) -> bool:
-    '''GET /dashboard?key=... → 200 and shows the dashboard page.'''
+    '''GET /dashboard?key=... returns 200 and shows the dashboard page.'''
 
     status, body, _ = request(f'{base}/dashboard?key={api_key}')
 
@@ -327,7 +327,7 @@ def test_dashboard(base: str, api_key: str, email: str, verbose: bool) -> bool:
 
 
 def test_admin_panel(base: str, admin_key: str, verbose: bool) -> bool:
-    '''GET /admin?key=... → 200.'''
+    '''GET /admin?key=... returns 200.'''
 
     status, body, _ = request(f'{base}/admin?key={admin_key}')
 
@@ -336,7 +336,7 @@ def test_admin_panel(base: str, admin_key: str, verbose: bool) -> bool:
         return True
 
     if status == 403:
-        fail('admin panel → 403 (wrong key, or IP not in allowed CIDRs?)')
+        fail('admin panel: 403 (wrong key, or IP not in allowed CIDRs?)')
         return False
 
     fail('admin panel', f'HTTP {status}')
@@ -410,10 +410,10 @@ def cleanup(base: str, admin_key: str, user_id: int | None, email: str) -> None:
     if status in (200, 302, 303):
         ok(f'cleaned up test user ({email})')
     else:
-        skip(f'cleanup failed (HTTP {status}) — delete {email!r} from admin panel manually')
+        skip(f'cleanup failed (HTTP {status}); delete {email!r} from admin panel manually')
 
 
-# ── Entry point ──────────────────────────────────────────────────────────────
+# --- Entry point ---
 
 # Module-level so test_grant_and_infer can reference it after registration
 _api_key: str = ''
@@ -485,15 +485,15 @@ def main() -> int:
             failed += 1
         return result
 
-    # ── Phase 1: infrastructure ───────────────────────────────────────────
+    # --- Phase 1: Infrastructure ---
     section('1. Infrastructure')
     if not record(test_health(base, verbose)):
-        print(_col(RED, '\nHealth check failed — is the service up?'))
+        print(_col(RED, '\nHealth check failed; is the service up?'))
         return 1
 
     record(test_register_page(base, verbose))
 
-    # ── Phase 2: registration ─────────────────────────────────────────────
+    # --- Phase 2: Registration ---
     section('2. Registration')
     reg_ok = record(test_register_new_user(base, email, verbose))
     record(test_register_duplicate(base, email, verbose))
@@ -502,16 +502,16 @@ def main() -> int:
     if reg_ok:
         user_id = get_user_id_from_admin(base, admin_key, email)
 
-    # ── Phase 3: auth ─────────────────────────────────────────────────────
+    # --- Phase 3: Auth ---
     section('3. Authentication')
     record(test_no_key_401(base, verbose))
     record(test_bad_key_401(base, verbose))
 
-    # ── Phase 4: admin panel ──────────────────────────────────────────────
+    # --- Phase 4: Admin panel ---
     section('4. Admin panel')
     record(test_admin_panel(base, admin_key, verbose))
 
-    # ── Phase 5: inference ────────────────────────────────────────────────
+    # --- Phase 5: Inference ---
     section('5. Inference (requires API key)')
 
     # We can't recover the raw API key from the registered user (it's emailed).
@@ -536,25 +536,25 @@ def main() -> int:
         if grant_ok and inf_ok:
             record(test_dashboard(base, smoke_key, smoke_email, verbose))
 
-    # ── Cleanup ───────────────────────────────────────────────────────────
+    # --- Cleanup ---
     section('6. Cleanup')
     cleanup(base, admin_key, user_id, email)
 
-    # ── Phase 7: rate limiting ────────────────────────────────────────────
-    # Run last — deliberately fills the IP rate-limit bucket, which would
+    # --- Phase 7: Rate limiting ---
+    # Run last: deliberately fills the IP rate-limit bucket, which would
     # cause false 429s in any sections that follow within the same 60s window.
     section('7. Rate limiting')
 
     if args.skip_rate_limit:
         skip('rate limit test skipped (--skip-rate-limit)')
     else:
-        print(f'  {_col(DIM, "sending 130 unauthenticated requests — this takes a few seconds...")}')
+        print(f'  {_col(DIM, "sending 130 unauthenticated requests, this takes a few seconds...")}')
         record(test_rate_limit(base, verbose))
 
-    # ── Summary ───────────────────────────────────────────────────────────
+    # --- Summary ---
     total = passed + failed
-    colour = GREEN if failed == 0 else RED
-    print(f'\n{_col(colour, _col(BOLD, f"{passed}/{total} checks passed"))}\n')
+    color = GREEN if failed == 0 else RED
+    print(f'\n{_col(color, _col(BOLD, f"{passed}/{total} checks passed"))}\n')
 
     return 0 if failed == 0 else 1
 
