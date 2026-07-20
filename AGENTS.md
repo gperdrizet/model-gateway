@@ -22,7 +22,7 @@ curl https://promptlyapi.com/v1/chat/completions \
 
 The `model` field is accepted but ignored; the server uses whichever model is loaded. The actual model name is returned in the response (e.g. `gpt-oss-20b-mxfp4.gguf`).
 
-**Context window:** 16,384 tokens per request (65,536 total across 4 parallel slots).
+**Context window:** 32,768 tokens per request (single-slot deployment).
 
 ## Responses API (text profile)
 
