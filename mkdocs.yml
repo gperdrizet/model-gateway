@@ -22,4 +22,5 @@ nav:
   - Overview: index.md
   - API quickstart: api-quickstart.md
   - Responses API profile: responses-api-profile.md
+  - Zed coding agent: zed-coding-agent.md
   - Operations: operations.md

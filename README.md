@@ -131,7 +131,7 @@ Unsupported features are rejected with a clear `400` error instead of being sile
 
 ### Model name and response format
 
-The `model` field in your request is accepted but ignored; the server always uses whichever model is currently loaded. The model name returned in the response reflects the actual loaded model (e.g. `gpt-oss-20b-mxfp4.gguf`). You can query the current model name with:
+The `model` field in your request is accepted but ignored; the server always uses whichever model is currently loaded. The current deployed backend for this repository is `gpt-oss-20b-mxfp4.gguf` with a 32,768-token context window and 1 slot. You can query the current model name with:
 
 ```bash
 curl https://promptlyapi.com/v1/models \
