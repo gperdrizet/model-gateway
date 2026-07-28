@@ -8,6 +8,7 @@ llama-server, records usage (token counts only - no content).
 import logging
 import json
 import os
+import re
 import secrets
 import time
 from ipaddress import ip_address, ip_network
@@ -46,8 +47,18 @@ templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 # Simple in-memory rate limit for registration: max attempts per IP per hour.
 # Override via REGISTRATION_RATE_LIMIT env var.
 _reg_attempts: dict[str, list[float]] = defaultdict(list)
-REG_LIMIT = int(os.environ.get('REGISTRATION_RATE_LIMIT', '10'))
-REG_WINDOW = 3600
+REG_LIMIT = int(os.environ.get('REGISTRATION_RATE_LIMIT', '3'))
+REG_WINDOW = int(os.environ.get('REGISTRATION_RATE_WINDOW', '3600'))
+
+# Shorter burst window to slow down repeated spam submissions.
+_reg_burst_attempts: dict[str, list[float]] = defaultdict(list)
+REG_BURST_LIMIT = int(os.environ.get('REGISTRATION_BURST_LIMIT', '2'))
+REG_BURST_WINDOW = int(os.environ.get('REGISTRATION_BURST_WINDOW', '600'))
+
+# Lightweight anti-bot challenge for public signup.
+_reg_captcha_challenges: dict[str, tuple[float, int]] = {}
+_CAPTCHA_COOKIE_NAME = 'signup_captcha'
+_CAPTCHA_TTL = int(os.environ.get('REGISTRATION_CAPTCHA_TTL', '300'))
 
 # Per-IP rate limit on all /v1/* hits (catches unauthenticated hammering).
 # Generous enough to allow multiple real users behind the same NAT.
@@ -61,6 +72,36 @@ INF_IP_WINDOW = 60  # seconds
 _user_inf_attempts: dict[str, list[float]] = defaultdict(list)
 INF_USER_LIMIT = int(os.environ.get('INFERENCE_USER_RATE_LIMIT', '60'))
 INF_USER_WINDOW = 60  # seconds
+
+# Lightweight email validation for public signup.
+_EMAIL_RE = re.compile(
+    r"^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}$"
+)
+
+
+def _is_valid_email(email: str) -> bool:
+    '''Return True for a basic, non-suspicious email address.'''
+
+    if not email or len(email) > 254:
+        return False
+
+    if any(ch in email for ch in ('/', '\\', '<', '>', '"', "'", '(', ')', ',', ';', ':')):
+        return False
+
+    if email.count('@') != 1:
+        return False
+
+    local, domain = email.rsplit('@', 1)
+    if not local or len(local) > 64 or not domain or len(domain) > 253:
+        return False
+
+    if local.startswith('.') or local.endswith('.') or '..' in local:
+        return False
+
+    if not _EMAIL_RE.fullmatch(email):
+        return False
+
+    return True
 
 
 def _check_reg_rate_limit(ip: str) -> bool:
@@ -83,6 +124,87 @@ def _check_reg_rate_limit(ip: str) -> bool:
     _reg_attempts[ip].append(now)
 
     return True
+
+
+def _check_reg_burst_rate_limit(ip: str) -> bool:
+    '''Check a short burst window for registration attempts.'''
+
+    now = time.time()
+    attempts = [t for t in _reg_burst_attempts[ip] if now - t < REG_BURST_WINDOW]
+    _reg_burst_attempts[ip] = attempts
+
+    if len(attempts) >= REG_BURST_LIMIT:
+        return False
+
+    _reg_burst_attempts[ip].append(now)
+
+    return True
+
+
+def _prune_captcha_challenges(now: float | None = None) -> None:
+    '''Remove stale captcha challenges.'''
+
+    now = time.time() if now is None else now
+    expired = [token for token, (expires_at, _) in _reg_captcha_challenges.items() if expires_at <= now]
+    for token in expired:
+        del _reg_captcha_challenges[token]
+
+
+def _issue_registration_captcha() -> tuple[str, str]:
+    '''Create a simple arithmetic captcha challenge and return its token/question.'''
+
+    _prune_captcha_challenges()
+    token = secrets.token_urlsafe(16)
+    left = secrets.randbelow(9) + 1
+    right = secrets.randbelow(9) + 1
+    answer = left + right
+    _reg_captcha_challenges[token] = (time.time() + _CAPTCHA_TTL, answer)
+    return token, f'{left} + {right}'
+
+
+def _validate_registration_captcha(token: str | None, answer: str | None) -> bool:
+    '''Validate the captcha token from the form. The challenge is single-use.'''
+
+    if not token or not answer:
+        return False
+
+    _prune_captcha_challenges()
+    challenge = _reg_captcha_challenges.pop(token, None)
+    if challenge is None:
+        return False
+
+    expires_at, expected = challenge
+    if time.time() > expires_at:
+        return False
+
+    try:
+        provided = int(str(answer).strip())
+    except ValueError:
+        return False
+
+    return provided == expected
+
+
+def _render_register_page(request: Request, error: str | None = None, *, status_code: int = 200):
+    '''Render the registration form with a fresh captcha challenge.'''
+
+    captcha_token, captcha_question = _issue_registration_captcha()
+    response = templates.TemplateResponse(request, 'register.html', {
+        'trial_tokens_fmt': _fmt_tokens(TRIAL_TOKENS),
+        'trial_expiry_days': TRIAL_EXPIRY_DAYS,
+        'error': error,
+        'captcha_token': captcha_token,
+        'captcha_question': captcha_question,
+    }, status_code=status_code)
+    response.set_cookie(
+        key=_CAPTCHA_COOKIE_NAME,
+        value=captcha_token,
+        httponly=True,
+        samesite='lax',
+        max_age=_CAPTCHA_TTL,
+        path='/',
+    )
+    return response
 
 
 def _check_ip_inference_rate_limit(ip: str) -> bool:
@@ -216,27 +338,33 @@ async def index(request: Request):
 async def register_page(request: Request):
     '''Render the registration form.'''
 
-    return templates.TemplateResponse(request, 'register.html', {
-        'trial_tokens_fmt': _fmt_tokens(TRIAL_TOKENS),
-        'trial_expiry_days': TRIAL_EXPIRY_DAYS,
-        'error': None,
-    })
+    return _render_register_page(request)
 
 
 @app.post("/register", response_class=HTMLResponse)
-async def register_submit(request: Request, email: str = Form(...)):
+async def register_submit(
+    request: Request,
+    email: str = Form(...),
+    captcha_token: str | None = Form(default=None),
+    captcha_answer: str | None = Form(default=None),
+):
     '''Handle registration form submission. Creates a new user and sends a trial key email.'''
 
     client_ip = request.client.host if request.client else 'unknown'
 
-    if not _check_reg_rate_limit(client_ip):
-        return templates.TemplateResponse(request, 'register.html', {
-            'trial_tokens_fmt': _fmt_tokens(TRIAL_TOKENS),
-            'trial_expiry_days': TRIAL_EXPIRY_DAYS,
-            'error': 'Too many attempts. Please try again later.',
-        }, status_code=429)
+    if not _check_reg_rate_limit(client_ip) or not _check_reg_burst_rate_limit(client_ip):
+        log.warning('Registration rate limit hit from %s', client_ip)
+        return _render_register_page(request, 'Too many attempts. Please try again later.', status_code=429)
+
+    if not _validate_registration_captcha(captcha_token, captcha_answer):
+        log.warning('Registration captcha failed from %s', client_ip)
+        return _render_register_page(request, 'Please solve the captcha correctly.', status_code=400)
 
     email = email.strip().lower()
+    if not _is_valid_email(email):
+        log.warning('Registration rejected invalid email from %s: %r', client_ip, email)
+        return _render_register_page(request, 'Please enter a valid email address.', status_code=400)
+
     returning = False
 
     async with async_session() as session:
@@ -278,6 +406,8 @@ async def register_submit(request: Request, email: str = Form(...)):
             await send_trial_key_email(email, raw_key)
         except (aiosmtplib.SMTPException, OSError):
             log.exception("Failed to send trial key email to %s", email)
+
+    log.info('Registration succeeded for %s from %s', email, client_ip)
 
     return templates.TemplateResponse(request, 'registered.html', {
         'email': email,
@@ -1276,6 +1406,29 @@ async def admin_panel(request: Request, key: str = Query(default='')):
 
         usage_map = {r["user_id"]: r["total"] for r in usage_result.mappings().all()}
 
+        # All-time usage per user
+        all_time_usage_result = await session.execute(
+            sql_text(
+                "SELECT user_id, "
+                "COALESCE(SUM(input_tokens+output_tokens),0) AS total "
+                "FROM usage_events GROUP BY user_id"
+            )
+        )
+        all_time_usage_map = {
+            r["user_id"]: r["total"] for r in all_time_usage_result.mappings().all()
+        }
+
+        # Last request per user and current free-vs-paid breakdown
+        last_request_result = await session.execute(
+            sql_text(
+                "SELECT user_id, MAX(timestamp) AS last_req "
+                "FROM usage_events GROUP BY user_id"
+            )
+        )
+        last_request_map = {
+            r["user_id"]: r["last_req"] for r in last_request_result.mappings().all()
+        }
+
         # Global stats
         active_trials = len(trial_map)
         total_paid = sum(u.balance_tokens for u in users_rows)
@@ -1299,17 +1452,31 @@ async def admin_panel(request: Request, key: str = Query(default='')):
     
         for u in users_rows:
             tr = trial_map.get(u.id)
+            free_tokens = tr['rem'] if tr else 0
+            paid_tokens = u.balance_tokens
+            last_req = last_request_map.get(u.id)
+            if isinstance(last_req, str):
+                last_req_dt = datetime.fromisoformat(last_req).replace(tzinfo=timezone.utc)
+            else:
+                last_req_dt = last_req
+
             user_list.append({
                 'id': u.id,
                 'email': u.email,
                 'prefix': u.api_key_prefix,
                 'balance': u.balance_tokens,
                 'balance_fmt': _fmt_tokens(u.balance_tokens),
-                'trial_remaining': tr['rem'] if tr else 0,
-                'trial_remaining_fmt': _fmt_tokens(tr['rem']) if tr else '0',
+                'free_tokens': free_tokens,
+                'free_tokens_fmt': _fmt_tokens(free_tokens),
+                'paid_tokens': paid_tokens,
+                'paid_tokens_fmt': _fmt_tokens(paid_tokens),
+                'trial_remaining': free_tokens,
+                'trial_remaining_fmt': _fmt_tokens(free_tokens),
                 'trial_expires': tr['exp'].strftime('%b %d') if tr else '',
                 'used_30d_fmt': _fmt_tokens(usage_map.get(u.id, 0)),
+                'used_total_fmt': _fmt_tokens(all_time_usage_map.get(u.id, 0)),
                 'joined': u.created_at.strftime('%Y-%m-%d'),
+                'last_request': last_req_dt.strftime('%Y-%m-%d') if last_req_dt else '—',
             })
 
     return templates.TemplateResponse(request, "admin.html", {

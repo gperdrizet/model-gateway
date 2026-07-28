@@ -5,11 +5,39 @@ The llama-server is NOT called - inference proxy tests are skipped here
 (they live in integration tests that run against a real backend).
 '''
 
+import re
+
 import pytest
 from httpx import AsyncClient
 
 
 pytestmark = pytest.mark.asyncio
+
+
+async def _submit_registration(client: AsyncClient, email: str, *, follow_redirects: bool = True):
+    '''Submit a registration form with a valid captcha challenge.'''
+
+    r = await client.get('/register')
+    assert r.status_code == 200
+
+    text = r.text
+    token = re.search(r'name="captcha_token" value="([^"]+)"', text)
+    question = re.search(r'Solve this to continue: <strong>([^<]+)</strong>', text)
+    assert token is not None
+    assert question is not None
+
+    numbers = [int(part) for part in re.findall(r'\d+', question.group(1))]
+    answer = sum(numbers)
+
+    return await client.post(
+        '/register',
+        data={
+            'email': email,
+            'captcha_token': token.group(1),
+            'captcha_answer': answer,
+        },
+        follow_redirects=follow_redirects,
+    )
 
 
 # --- Health ---
@@ -37,11 +65,7 @@ async def test_register_page(client: AsyncClient):
 async def test_register_new_user(client: AsyncClient):
     '''Posting a new email registers the user and shows a confirmation page.'''
 
-    r = await client.post(
-        '/register',
-        data={'email': 'new@example.com'},
-        follow_redirects=True,
-    )
+    r = await _submit_registration(client, 'new@example.com')
 
     assert r.status_code == 200
 
@@ -52,12 +76,29 @@ async def test_register_new_user(client: AsyncClient):
 async def test_register_existing_user_same_response(client: AsyncClient):
     '''Registering twice returns the same page - prevents email enumeration.'''
 
-    data = {'email': 'dup@example.com'}
-    r1 = await client.post('/register', data=data, follow_redirects=True)
-    r2 = await client.post('/register', data=data, follow_redirects=True)
+    r1 = await _submit_registration(client, 'dup@example.com')
+    r2 = await _submit_registration(client, 'dup@example.com')
 
     assert r1.status_code == 200
     assert r2.status_code == 200
+
+
+async def test_register_rejects_invalid_email(client: AsyncClient):
+    '''Malformed or suspicious email input is rejected before account creation.'''
+
+    r = await _submit_registration(client, '../../etc/passwd')
+
+    assert r.status_code == 400
+    assert b'valid email address' in r.content.lower()
+
+
+async def test_register_requires_captcha(client: AsyncClient):
+    '''Missing captcha response is rejected before account creation.'''
+
+    r = await client.post('/register', data={'email': 'captcha@example.com'}, follow_redirects=True)
+
+    assert r.status_code == 400
+    assert b'captcha' in r.content.lower()
 
 
 # --- Auth ---

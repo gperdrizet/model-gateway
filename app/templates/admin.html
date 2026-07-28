@@ -15,7 +15,7 @@
     }
     a { color: #60a5fa; text-decoration: none; }
     a:hover { text-decoration: underline; }
-    .wrap { max-width: 1000px; margin: 0 auto; }
+    .wrap { max-width: 1200px; margin: 0 auto; }
     h1 { font-size: 1.3rem; margin: 0 0 4px; color: #f8fafc; }
     .sub { color: #64748b; font-size: 0.85rem; margin: 0 0 28px; }
 
@@ -31,10 +31,11 @@
     .stat .value { font-size: 1.5rem; font-weight: 600; }
 
     /* table */
-    .table-wrap { background: #1e293b; border-radius: 10px; overflow: hidden; margin-bottom: 28px; }
-    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-    th { background: #0f172a; color: #94a3b8; font-weight: 500; text-align: left; padding: 10px 14px; border-bottom: 1px solid #334155; }
-    td { padding: 10px 14px; border-bottom: 1px solid #1e293b; vertical-align: middle; }
+    .table-wrap { background: #1e293b; border-radius: 10px; overflow-x: auto; margin-bottom: 28px; }
+    table { width: 100%; min-width: 920px; border-collapse: collapse; font-size: 0.85rem; }
+    th { background: #0f172a; color: #94a3b8; font-weight: 500; text-align: left; padding: 10px 12px; border-bottom: 1px solid #334155; }
+    td { padding: 10px 12px; border-bottom: 1px solid #1e293b; vertical-align: middle; white-space: nowrap; }
+    .email-cell { max-width: 240px; white-space: normal; word-break: break-word; }
     tr:last-child td { border-bottom: none; }
     tr:hover td { background: #263045; }
     .badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 0.75rem; }
@@ -111,10 +112,13 @@
       <thead>
         <tr>
           <th>Email</th>
-          <th>Key prefix</th>
-          <th>Balance</th>
+          <th>Key</th>
+          <th>Free</th>
+          <th>Paid</th>
           <th>Trial</th>
-          <th>30d usage</th>
+          <th>30d</th>
+          <th>All-time</th>
+          <th>Last</th>
           <th>Joined</th>
           <th>Actions</th>
         </tr>
@@ -122,13 +126,18 @@
       <tbody>
         {% for u in users %}
         <tr>
-          <td>{{ u.email }}</td>
+          <td class="email-cell">{{ u.email }}</td>
           <td><code style="font-size:0.8rem;color:#94a3b8">{{ u.prefix }}</code></td>
           <td>
-            {% if u.balance > 0 %}
-              <span class="badge paid">{{ u.balance_fmt }}</span>
-            {% elif u.trial_remaining > 0 %}
-              <span class="badge trial">{{ u.trial_remaining_fmt }} trial</span>
+            {% if u.free_tokens > 0 %}
+              <span class="badge trial">{{ u.free_tokens_fmt }}</span>
+            {% else %}
+              <span class="badge empty">0</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if u.paid_tokens > 0 %}
+              <span class="badge paid">{{ u.paid_tokens_fmt }}</span>
             {% else %}
               <span class="badge empty">0</span>
             {% endif %}
@@ -141,6 +150,8 @@
             {% endif %}
           </td>
           <td>{{ u.used_30d_fmt }}</td>
+          <td>{{ u.used_total_fmt }}</td>
+          <td style="color:#64748b;white-space:nowrap">{{ u.last_request }}</td>
           <td style="color:#64748b;white-space:nowrap">{{ u.joined }}</td>
           <td>
             <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">

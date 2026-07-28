@@ -28,8 +28,13 @@ os.environ.setdefault("ADMIN_KEY", "test-admin-key")
 os.environ.setdefault("BASE_URL", "http://testserver")
 os.environ.setdefault("TRIAL_TOKENS", "100000")
 os.environ.setdefault("TRIAL_EXPIRY_DAYS", "7")
+os.environ.setdefault("REGISTRATION_RATE_LIMIT", "50")
+os.environ.setdefault("REGISTRATION_RATE_WINDOW", "3600")
+os.environ.setdefault("REGISTRATION_BURST_LIMIT", "50")
+os.environ.setdefault("REGISTRATION_BURST_WINDOW", "600")
 
 from app.app import app  # noqa: E402 - must import after env vars are set
+import app.app as gateway_app
 from app.db import engine, Base, generate_api_key, User, TrialTokens
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from datetime import datetime, timedelta, timezone
@@ -46,11 +51,19 @@ async def _db_session():
         None; sets up and tears down the schema around each test.
     '''
 
+    gateway_app._reg_attempts.clear()
+    gateway_app._reg_burst_attempts.clear()
+    gateway_app._reg_captcha_challenges.clear()
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
+
+    gateway_app._reg_attempts.clear()
+    gateway_app._reg_burst_attempts.clear()
+    gateway_app._reg_captcha_challenges.clear()
 
 
 @pytest_asyncio.fixture(scope='function')
