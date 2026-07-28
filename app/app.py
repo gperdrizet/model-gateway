@@ -1385,10 +1385,11 @@ async def admin_panel(request: Request, key: str = Query(default='')):
         # Active trial counts per user
         trial_result = await session.execute(
             sql_text(
-                "SELECT user_id, SUM(remaining_tokens) AS rem, MIN(expires_at) AS exp, "
+                "SELECT user_id, "
+                "SUM(CASE WHEN expires_at > :now AND remaining_tokens > 0 THEN remaining_tokens ELSE 0 END) AS rem, "
+                "MIN(CASE WHEN expires_at > :now AND remaining_tokens > 0 THEN expires_at END) AS exp, "
                 "COUNT(*) AS grant_count "
-                "FROM trial_tokens WHERE expires_at > :now AND remaining_tokens > 0 "
-                "GROUP BY user_id"
+                "FROM trial_tokens GROUP BY user_id"
             ),
             {"now": now},
         )
@@ -1475,6 +1476,7 @@ async def admin_panel(request: Request, key: str = Query(default='')):
                 'trial_remaining_fmt': _fmt_tokens(free_tokens),
                 'trial_expires': tr['exp'].strftime('%b %d') if tr else '',
                 'trial_grant_count': tr['grant_count'] if tr else 0,
+                'has_free_grant_history': (tr['grant_count'] if tr else 0) > 0,
                 'used_30d_fmt': _fmt_tokens(usage_map.get(u.id, 0)),
                 'used_total_fmt': _fmt_tokens(all_time_usage_map.get(u.id, 0)),
                 'joined': u.created_at.strftime('%Y-%m-%d'),
