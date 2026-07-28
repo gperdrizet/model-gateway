@@ -73,6 +73,14 @@
     <form method="post" action="/register">
       <label for="email">Email address</label>
       <input type="email" id="email" name="email" placeholder="you@example.com" required autofocus>
+
+      <label for="captcha_answer" style="margin-top: 14px;">Captcha</label>
+      <div style="margin-bottom: 8px; color: #4b5563; font-size: 0.95rem;">
+        Solve this to continue: <strong>{{ captcha_question }}</strong>
+      </div>
+      <input type="hidden" name="captcha_token" value="{{ captcha_token }}">
+      <input type="number" id="captcha_answer" name="captcha_answer" inputmode="numeric" required style="width: 100%; padding: 10px 14px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 1rem;">
+
       <button type="submit">Send my key</button>
     </form>
 
