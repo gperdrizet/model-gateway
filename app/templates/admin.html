@@ -42,6 +42,15 @@
     .badge.trial { background: #1c3144; color: #7dd3fc; }
     .badge.paid  { background: #14532d; color: #86efac; }
     .badge.empty { background: #1c1917; color: #78716c; }
+    .status-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 3px 8px; border-radius: 999px; font-size: 0.72rem;
+      font-weight: 600; letter-spacing: 0.02em;
+      white-space: nowrap;
+    }
+    .status-pill.free { background: #1c3144; color: #7dd3fc; }
+    .status-pill.paid { background: #14532d; color: #86efac; }
+    .status-pill.mixed { background: #3f2c1d; color: #fbbf24; }
 
     /* action buttons */
     .btn { display: inline-block; padding: 5px 12px; border-radius: 6px; border: none; font-size: 0.8rem; cursor: pointer; font-family: inherit; }
@@ -126,7 +135,20 @@
       <tbody>
         {% for u in users %}
         <tr>
-          <td class="email-cell">{{ u.email }}</td>
+          <td class="email-cell">
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <span>{{ u.email }}</span>
+              {% if u.free_tokens > 0 and u.paid_tokens > 0 %}
+                <span class="status-pill mixed">mixed</span>
+              {% elif u.free_tokens > 0 %}
+                <span class="status-pill free">free</span>
+              {% elif u.paid_tokens > 0 %}
+                <span class="status-pill paid">paid</span>
+              {% else %}
+                <span class="status-pill empty" style="background:#1c1917;color:#78716c">none</span>
+              {% endif %}
+            </div>
+          </td>
           <td><code style="font-size:0.8rem;color:#94a3b8">{{ u.prefix }}</code></td>
           <td>
             {% if u.free_tokens > 0 %}
@@ -144,9 +166,9 @@
           </td>
           <td>
             {% if u.trial_remaining > 0 %}
-              {{ u.trial_remaining_fmt }} · exp {{ u.trial_expires }}
+              {{ u.trial_remaining_fmt }}{% if u.trial_grant_count > 1 %} · {{ u.trial_grant_count }} grants{% endif %}{% if u.trial_expires %} · exp {{ u.trial_expires }}{% endif %}
             {% else %}
-              N/A
+              —
             {% endif %}
           </td>
           <td>{{ u.used_30d_fmt }}</td>
