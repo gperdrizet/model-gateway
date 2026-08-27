@@ -4,7 +4,7 @@
 
 ## 1. Get a Promptly API key
 
-If you don't already have one, go to `https://promptlyapi.com`, create an account, and you'll receive an API key by email. New accounts start with a free trial (100,000 tokens, 7 days).
+If you don't already have one, go to `https://promptlyapi.com`, create an account, and you'll receive an API key by email. New accounts start with a free trial (1,000,000 tokens, 7 days).
 
 ## 2. Install Zed
 

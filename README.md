@@ -17,7 +17,7 @@ Full documentation: https://gperdrizet.github.io/model-gateway/
 
 ## How it works
 
-- Users register at **[https://promptlyapi.com](https://promptlyapi.com)** and receive a trial allocation (100k tokens, 7 days)
+- Users register at **[https://promptlyapi.com](https://promptlyapi.com)** and receive a trial allocation (1M tokens, 7 days)
 - API calls are made to `https://promptlyapi.com/v1` with a bearer token
 - Each request deducts tokens from the user's balance; requests are rejected with 402 when exhausted
 - Users can top up via Stripe (card) or BTCPay Server (Bitcoin)
@@ -36,7 +36,7 @@ Full documentation: https://gperdrizet.github.io/model-gateway/
 
 Go to **[https://promptlyapi.com](https://promptlyapi.com)** and click **Create an account**. Enter your email address and your API key will arrive by email within a few seconds.
 
-Your account starts with a **free trial: 100,000 tokens valid for 7 days**.
+Your account starts with a **free trial: 1,000,000 tokens valid for 7 days**.
 
 > **Lost your key?** Go back to [https://promptlyapi.com/register](https://promptlyapi.com/register) and enter the same email address. A new key will be issued and sent to you; your token balance is preserved, but the old key is immediately invalidated.
 
