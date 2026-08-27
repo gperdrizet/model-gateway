@@ -44,6 +44,32 @@ from .proxy import proxy_request, proxy_stream
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
+# The app only accepts connections from nginx (GATEWAY_BIND=127.0.0.1), so the
+# first X-Forwarded-For entry is nginx's own $proxy_add_x_forwarded_for value,
+# i.e. the real client address, not something an external caller can spoof.
+# Set TRUST_PROXY_HEADERS=false to fall back to the raw socket address (tests, local dev).
+TRUST_PROXY_HEADERS = os.environ.get('TRUST_PROXY_HEADERS', 'true').lower() != 'false'
+
+
+def _client_ip(request: Request) -> str:
+    '''Return the real client IP for rate limiting and admin access checks.
+
+    Args:
+        request: Incoming FastAPI request.
+
+    Returns:
+        The client IP from X-Forwarded-For (trusted single-hop proxy), falling
+        back to the raw socket address if the header is absent or untrusted.
+    '''
+
+    if TRUST_PROXY_HEADERS:
+        forwarded = request.headers.get('x-forwarded-for')
+
+        if forwarded:
+            return forwarded.split(',')[0].strip()
+
+    return request.client.host if request.client else ''
+
 # Simple in-memory rate limit for registration: max attempts per IP per hour.
 # Override via REGISTRATION_RATE_LIMIT env var.
 _reg_attempts: dict[str, list[float]] = defaultdict(list)
@@ -350,7 +376,7 @@ async def register_submit(
 ):
     '''Handle registration form submission. Creates a new user and sends a trial key email.'''
 
-    client_ip = request.client.host if request.client else 'unknown'
+    client_ip = _client_ip(request) or 'unknown'
 
     if not _check_reg_rate_limit(client_ip) or not _check_reg_burst_rate_limit(client_ip):
         log.warning('Registration rate limit hit from %s', client_ip)
@@ -954,7 +980,7 @@ def _responses_sse(payload: dict) -> bytes:
 async def responses_api(request: Request):
     '''Text-only shim for the OpenAI Responses API backed by chat completions.'''
 
-    client_ip = request.client.host if request.client else ''
+    client_ip = _client_ip(request)
 
     if not _check_ip_inference_rate_limit(client_ip):
         return JSONResponse(
@@ -1121,7 +1147,7 @@ async def responses_api(request: Request):
 async def proxy(request: Request, path: str):
     '''Authenticate, check balance, and proxy the request to llama-server.'''
 
-    client_ip = request.client.host if request.client else ''
+    client_ip = _client_ip(request)
 
     if not _check_ip_inference_rate_limit(client_ip):
         return JSONResponse(
@@ -1325,7 +1351,7 @@ def _check_admin_ip(request: Request) -> bool:
         True if the client IP is within any of the allowed CIDRs.
     '''
 
-    client_ip = request.client.host if request.client else ""
+    client_ip = _client_ip(request)
 
     try:
         addr = ip_address(client_ip)
