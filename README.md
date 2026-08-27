@@ -13,7 +13,7 @@ An authenticated, metered API gateway for LLM inference.
 
 ## Documentation
 
-Full documentation: https://gperdrizet.github.io/promptly
+Full documentation: https://gperdrizet.github.io/model-gateway/
 
 ## How it works
 
