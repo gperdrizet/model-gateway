@@ -37,6 +37,7 @@ services:
       TRIAL_EXPIRY_DAYS: ${TRIAL_EXPIRY_DAYS:-7}
       BASE_URL: ${BASE_URL}
       ADMIN_KEY: ${ADMIN_KEY}
+      TRUST_PROXY_HEADERS: ${TRUST_PROXY_HEADERS:-true}
     extra_hosts:
       host-gateway: host-gateway
     depends_on:
