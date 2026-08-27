@@ -14,9 +14,6 @@ on:
 permissions:
   contents: write   # needed to create tags and releases
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
-
 jobs:
   guard:
     runs-on: ubuntu-latest
@@ -33,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: production      # requires manual approval in GitHub: Settings, then Environments
     steps:
-      - uses: actions/checkout@v4.3.1
+      - uses: actions/checkout@v5
 
       - name: Deploy to gatekeeper (production)
         env:
