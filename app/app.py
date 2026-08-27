@@ -44,6 +44,32 @@ from .proxy import proxy_request, proxy_stream
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
+# The app only accepts connections from nginx (GATEWAY_BIND=127.0.0.1), so the
+# first X-Forwarded-For entry is nginx's own $proxy_add_x_forwarded_for value,
+# i.e. the real client address, not something an external caller can spoof.
+# Set TRUST_PROXY_HEADERS=false to fall back to the raw socket address (tests, local dev).
+TRUST_PROXY_HEADERS = os.environ.get('TRUST_PROXY_HEADERS', 'true').lower() != 'false'
+
+
+def _client_ip(request: Request) -> str:
+    '''Return the real client IP for rate limiting and admin access checks.
+
+    Args:
+        request: Incoming FastAPI request.
+
+    Returns:
+        The client IP from X-Forwarded-For (trusted single-hop proxy), falling
+        back to the raw socket address if the header is absent or untrusted.
+    '''
+
+    if TRUST_PROXY_HEADERS:
+        forwarded = request.headers.get('x-forwarded-for')
+
+        if forwarded:
+            return forwarded.split(',')[0].strip()
+
+    return request.client.host if request.client else ''
+
 # Simple in-memory rate limit for registration: max attempts per IP per hour.
 # Override via REGISTRATION_RATE_LIMIT env var.
 _reg_attempts: dict[str, list[float]] = defaultdict(list)
@@ -350,7 +376,7 @@ async def register_submit(
 ):
     '''Handle registration form submission. Creates a new user and sends a trial key email.'''
 
-    client_ip = request.client.host if request.client else 'unknown'
+    client_ip = _client_ip(request) or 'unknown'
 
     if not _check_reg_rate_limit(client_ip) or not _check_reg_burst_rate_limit(client_ip):
         log.warning('Registration rate limit hit from %s', client_ip)
@@ -954,7 +980,7 @@ def _responses_sse(payload: dict) -> bytes:
 async def responses_api(request: Request):
     '''Text-only shim for the OpenAI Responses API backed by chat completions.'''
 
-    client_ip = request.client.host if request.client else ''
+    client_ip = _client_ip(request)
 
     if not _check_ip_inference_rate_limit(client_ip):
         return JSONResponse(
@@ -1121,7 +1147,7 @@ async def responses_api(request: Request):
 async def proxy(request: Request, path: str):
     '''Authenticate, check balance, and proxy the request to llama-server.'''
 
-    client_ip = request.client.host if request.client else ''
+    client_ip = _client_ip(request)
 
     if not _check_ip_inference_rate_limit(client_ip):
         return JSONResponse(
@@ -1325,7 +1351,7 @@ def _check_admin_ip(request: Request) -> bool:
         True if the client IP is within any of the allowed CIDRs.
     '''
 
-    client_ip = request.client.host if request.client else ""
+    client_ip = _client_ip(request)
 
     try:
         addr = ip_address(client_ip)
@@ -1354,22 +1380,78 @@ def _check_admin(key: str) -> bool:
     return secrets.compare_digest(key.encode(), expected.encode())
 
 
+# Admin sessions - in-memory only, so a restart or multi-replica deployment
+# invalidates/won't-share sessions. Acceptable for this single-instance gateway.
+_admin_sessions: dict[str, float] = {}
+_ADMIN_SESSION_COOKIE = 'admin_session'
+_ADMIN_SESSION_TTL = int(os.environ.get('ADMIN_SESSION_TTL_SECONDS', str(12 * 3600)))
+
+
+def _prune_admin_sessions(now: float | None = None) -> None:
+    '''Remove expired admin session tokens.'''
+
+    now = time.time() if now is None else now
+    expired = [t for t, exp in _admin_sessions.items() if exp <= now]
+
+    for t in expired:
+        del _admin_sessions[t]
+
+
+def _issue_admin_session() -> str:
+    '''Create a new admin session token and return it.'''
+
+    _prune_admin_sessions()
+    token = secrets.token_urlsafe(32)
+    _admin_sessions[token] = time.time() + _ADMIN_SESSION_TTL
+
+    return token
+
+
+def _check_admin_session(token: str | None) -> bool:
+    '''Return True if the given admin session token is valid and unexpired.'''
+
+    if not token:
+        return False
+
+    _prune_admin_sessions()
+
+    return _admin_sessions.get(token, 0) > time.time()
+
+
+def _revoke_admin_session(token: str | None) -> None:
+    '''Remove a session token, e.g. on logout.'''
+
+    if token:
+        _admin_sessions.pop(token, None)
+
+
+def _set_admin_session_cookie(response: Response, token: str) -> None:
+    '''Attach the admin session cookie to a response.
+
+    No explicit `secure` flag: matches the existing captcha cookie convention so
+    the cookie still works in tests (http://testserver); the production domain
+    is HTTPS-only end to end via nginx regardless.
+    '''
+
+    response.set_cookie(
+        key=_ADMIN_SESSION_COOKIE,
+        value=token,
+        max_age=_ADMIN_SESSION_TTL,
+        httponly=True,
+        samesite='strict',
+        path='/admin',
+    )
+
+
 @app.get("/admin", response_class=HTMLResponse)
-async def admin_panel(request: Request, key: str = Query(default='')):
-    '''Render the admin panel. Shows login form if key is absent or wrong.'''
+async def admin_panel(request: Request):
+    '''Render the admin panel, or the login form if there's no valid session.'''
 
     if not _check_admin_ip(request):
         return JSONResponse(status_code=403, content={'error': 'forbidden'})
 
-    if not key:
+    if not _check_admin_session(request.cookies.get(_ADMIN_SESSION_COOKIE)):
         return templates.TemplateResponse(request, 'admin_login.html', {'error': None})
-
-    if not _check_admin(key):
-        return templates.TemplateResponse(
-            request, 'admin_login.html',
-            {'error': 'Incorrect admin key.'},
-            status_code=403,
-        )
 
     flash = request.query_params.get('flash')
     flash_type = request.query_params.get('ft', 'ok')
@@ -1491,7 +1573,6 @@ async def admin_panel(request: Request, key: str = Query(default='')):
             })
 
     return templates.TemplateResponse(request, "admin.html", {
-        'admin_key': key,
         'user_count': len(users_rows),
         'active_trials': active_trials,
         'total_paid_fmt': _fmt_tokens(total_paid),
@@ -1503,16 +1584,51 @@ async def admin_panel(request: Request, key: str = Query(default='')):
     })
 
 
+@app.post("/admin/login")
+async def admin_login(request: Request, key: str = Form(...)):
+    '''Verify the admin key and start a cookie-based admin session.
+
+    Keeping the key in a POST form body (instead of a GET query string) keeps
+    it out of nginx/proxy access logs and browser history.
+    '''
+
+    if not _check_admin_ip(request):
+        return JSONResponse(status_code=403, content={'error': 'forbidden'})
+
+    if not _check_admin(key):
+        return templates.TemplateResponse(
+            request, 'admin_login.html',
+            {'error': 'Incorrect admin key.'},
+            status_code=403,
+        )
+
+    token = _issue_admin_session()
+    response = RedirectResponse('/admin', status_code=303)
+    _set_admin_session_cookie(response, token)
+
+    return response
+
+
+@app.post("/admin/logout")
+async def admin_logout(request: Request):
+    '''End the current admin session.'''
+
+    _revoke_admin_session(request.cookies.get(_ADMIN_SESSION_COOKIE))
+    response = RedirectResponse('/admin', status_code=303)
+    response.delete_cookie(_ADMIN_SESSION_COOKIE, path='/admin')
+
+    return response
+
+
 @app.post("/admin/adjust")
 async def admin_adjust(
     request: Request,
-    key: str = Form(...),
     user_id: int = Form(...),
     delta: int = Form(...),
 ):
     '''Add or subtract tokens from a user's paid balance.'''
 
-    if not _check_admin_ip(request) or not _check_admin(key):
+    if not _check_admin_ip(request) or not _check_admin_session(request.cookies.get(_ADMIN_SESSION_COOKIE)):
         return JSONResponse(status_code=403, content={'error': 'forbidden'})
 
     async with async_session() as session:
@@ -1520,7 +1636,7 @@ async def admin_adjust(
 
         if user is None:
             return RedirectResponse(
-                f'/admin?key={key}&flash=User+not+found&ft=err',
+                '/admin?flash=User+not+found&ft=err',
                 status_code=303
             )
 
@@ -1529,7 +1645,7 @@ async def admin_adjust(
         action = f'+{delta:,}' if delta >= 0 else f'{delta:,}'
 
     return RedirectResponse(
-        f'/admin?key={key}&flash={action}+tokens+applied+to+{user.email}&ft=ok',
+        f'/admin?flash={action}+tokens+applied+to+{user.email}&ft=ok',
         status_code=303,
     )
 
@@ -1537,12 +1653,11 @@ async def admin_adjust(
 @app.post("/admin/delete")
 async def admin_delete(
     request: Request,
-    key: str = Form(...),
     user_id: int = Form(...),
 ):
     '''Permanently delete a user and all associated records.'''
 
-    if not _check_admin_ip(request) or not _check_admin(key):
+    if not _check_admin_ip(request) or not _check_admin_session(request.cookies.get(_ADMIN_SESSION_COOKIE)):
         return JSONResponse(status_code=403, content={'error': 'forbidden'})
 
     async with async_session() as session:
@@ -1550,7 +1665,7 @@ async def admin_delete(
 
         if user is None:
             return RedirectResponse(
-                f'/admin?key={key}&flash=User+not+found&ft=err',
+                '/admin?flash=User+not+found&ft=err',
                 status_code=303
             )
 
@@ -1575,7 +1690,7 @@ async def admin_delete(
         await session.commit()
 
     return RedirectResponse(
-        f'/admin?key={key}&flash=Deleted+{email}&ft=ok',
+        f'/admin?flash=Deleted+{email}&ft=ok',
         status_code=303,
     )
 
@@ -1583,14 +1698,13 @@ async def admin_delete(
 @app.post("/admin/grant")
 async def admin_grant(
     request: Request,
-    key: str = Form(...),
     email: str = Form(...),
     tokens: int = Form(...),
     days: int = Form(...),
 ):
     '''Grant a new trial allocation (tokens + expiry) to an existing user.'''
 
-    if not _check_admin_ip(request) or not _check_admin(key):
+    if not _check_admin_ip(request) or not _check_admin_session(request.cookies.get(_ADMIN_SESSION_COOKIE)):
         return JSONResponse(status_code=403, content={'error': 'forbidden'})
 
     email = email.strip().lower()
@@ -1600,7 +1714,7 @@ async def admin_grant(
 
         if user is None:
             return RedirectResponse(
-                f'/admin?key={key}&flash=No+user+found+with+email+{email}&ft=err',
+                f'/admin?flash=No+user+found+with+email+{email}&ft=err',
                 status_code=303,
             )
 
@@ -1615,6 +1729,6 @@ async def admin_grant(
         await session.commit()
 
     return RedirectResponse(
-        f'/admin?key={key}&flash=Granted+{tokens:,}+tokens+to+{email}&ft=ok',
+        f'/admin?flash=Granted+{tokens:,}+tokens+to+{email}&ft=ok',
         status_code=303,
     )
