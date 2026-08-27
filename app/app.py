@@ -1462,6 +1462,13 @@ async def admin_panel(request: Request, key: str = Query(default='')):
             else:
                 last_req_dt = last_req
 
+            # exp is null when a user has grant history but no currently active grant
+            trial_exp = tr['exp'] if tr else None
+            if isinstance(trial_exp, str):
+                trial_exp_dt = datetime.fromisoformat(trial_exp)
+            else:
+                trial_exp_dt = trial_exp
+
             user_list.append({
                 'id': u.id,
                 'email': u.email,
@@ -1474,7 +1481,7 @@ async def admin_panel(request: Request, key: str = Query(default='')):
                 'paid_tokens_fmt': _fmt_tokens(paid_tokens),
                 'trial_remaining': free_tokens,
                 'trial_remaining_fmt': _fmt_tokens(free_tokens),
-                'trial_expires': tr['exp'].strftime('%b %d') if tr else '',
+                'trial_expires': trial_exp_dt.strftime('%b %d') if trial_exp_dt else '',
                 'trial_grant_count': tr['grant_count'] if tr else 0,
                 'has_free_grant_history': (tr['grant_count'] if tr else 0) > 0,
                 'used_30d_fmt': _fmt_tokens(usage_map.get(u.id, 0)),
