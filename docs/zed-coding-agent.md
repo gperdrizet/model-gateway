@@ -1,55 +1,69 @@
-# Zed coding agent
+# Using Promptly with Zed
 
-Promptly exposes an OpenAI-compatible chat completions endpoint, so Zed can use it as a coding-assistant backend.
+[Zed](https://zed.dev) is a fast, open-source code editor with a built-in AI coding assistant. Zed can talk to any OpenAI-compatible API, so you can point it at Promptly and use it as your inference backend for chat, edits, and agentic coding.
 
-## Recommended deployment baseline
+## 1. Get a Promptly API key
 
-For a single developer using the service interactively, start with:
+If you don't already have one, go to `https://promptlyapi.com`, create an account, and you'll receive an API key by email. New accounts start with a free trial (100,000 tokens, 7 days).
 
-- Context size: 262,144 tokens (the full context the deployed model and server are configured for)
-- Slots: 1
+## 2. Install Zed
 
-Keep slots at 1 unless you have concurrent users or concurrent agent jobs.
+Download Zed from [zed.dev/download](https://zed.dev/download) (macOS, Linux, and Windows are supported), or install it with your platform's package manager.
 
-## Current deployed Promptly backend
+## 3. Add Promptly as an OpenAI-compatible provider
 
-As of this documentation update, Promptly is pointed at:
-
-- Model: `Qwen3.8-27B-Q8_0.gguf`
-- Context window: 262,144 tokens
-- Slots: 1
-- Default reasoning effort: `medium` (the model is a hybrid thinking/instruct model; thinking tokens count against your balance)
-
-This is the baseline the repo and site should reflect until the deployment changes.
-
-## Example Zed provider values
-
-Zed's exact settings UI varies a bit by version, but the values you want are the same: an OpenAI-compatible provider pointed at Promptly.
+In Zed, open **Settings** (`Cmd+,` / `Ctrl+,`) and add an OpenAI-compatible provider pointed at Promptly. In `settings.json`, this looks like:
 
 ```json
 {
-  "provider": "openai-compatible",
-  "base_url": "https://promptlyapi.com/v1",
-  "api_key": "env:PROMPTLY_API_KEY",
-  "model": "Qwen3.8-27B-Q8_0.gguf",
-  "temperature": 0.2,
-  "max_output_tokens": 4096
+  "language_models": {
+    "openai_compatible": {
+      "Promptly": {
+        "api_url": "https://promptlyapi.com/v1",
+        "available_models": [
+          {
+            "name": "default",
+            "display_name": "Promptly",
+            "max_tokens": 262144
+          }
+        ]
+      }
+    }
+  }
 }
 ```
 
-Notes:
+Zed's exact settings UI and JSON schema can shift a bit between versions - if the fields above don't match what you see, search Zed's docs for "OpenAI-compatible provider" and use the same `api_url` and model values.
 
-- Promptly accepts `POST /v1/chat/completions` and `POST /v1/responses`.
-- Promptly ignores the `model` field and serves whichever backend model is currently loaded.
-- If you switch the backend model later, you usually do not need to change the editor config.
+Set your API key via the environment variable Zed's provider setup expects (usually `PROMPTLY_API_KEY`), or paste it directly into the provider's API key field if Zed prompts for it. Don't commit your key to a repo or settings file that gets shared.
 
-## Good default for today
+## 4. Pick the model in Zed's assistant panel
 
-If you are using the current single-user Promptly deployment, this is the simplest setup to start with:
+Promptly ignores whatever model name you send and always serves whichever model is currently loaded on the backend, so the `"name": "default"` placeholder above works regardless. Select "Promptly" as the provider and "default" as the model in Zed's assistant panel, then start chatting or ask it to make edits.
 
-- Full 262,144 context
-- 1 slot
-- low temperature
-- `reasoning_effort: medium` (the server default; lower it to `low` or `none` for latency-sensitive edits, or raise it to `high` for harder problems)
+## What you're actually talking to
 
-That is the most conservative choice and usually the best first pass for a coding assistant.
+- **Model:** `Qwen3.8-27B-Q8_0.gguf`, a hybrid thinking/instruct model
+- **Context window:** 262,144 tokens
+- **Reasoning:** the server defaults to `reasoning_effort: medium`; thinking tokens count against your balance the same as regular output tokens
+
+You can check the currently loaded model at any time:
+
+```bash
+curl https://promptlyapi.com/v1/models \
+  -H "Authorization: Bearer sk-your-key-here"
+```
+
+## Suggested settings for interactive coding
+
+For normal editor-driven coding work (not heavy agentic/batch use), a reasonable starting point is:
+
+- Low temperature (e.g. `0.2`) for more predictable edits and completions
+- Default `reasoning_effort` (`medium`) for most tasks; if you want faster, cheaper responses for simple edits, override it to `low` or `none` per request; for harder problems, `high`
+- No need to change `max_tokens`/context settings from the default above unless you're working with unusually large files or long conversations
+
+## Notes
+
+- Promptly accepts `POST /v1/chat/completions` and `POST /v1/responses`; Zed uses chat completions.
+- Because Promptly always serves the currently loaded backend model regardless of what you request, you don't need to update your Zed config if the backend model changes later.
+- Check your token balance any time at `https://promptlyapi.com/dashboard?key=sk-your-key-here`.

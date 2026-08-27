@@ -39,6 +39,6 @@ Authorization: Bearer sk-<your-key>
 
 ## Example use cases
 
-- [Zed coding agent](zed-coding-agent.md): point Zed at Promptly as an OpenAI-compatible backend for interactive coding work.
+- [Using Zed with Promptly](zed-coding-agent.md): set up the Zed editor's AI assistant to use Promptly as its backend.
 
 Continue with the API quickstart for copy-paste examples.
