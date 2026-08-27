@@ -20,9 +20,11 @@ curl https://promptlyapi.com/v1/chat/completions \
   }'
 ```
 
-The `model` field is accepted but ignored; the server uses whichever model is loaded. The actual model name is returned in the response (e.g. `gpt-oss-20b-mxfp4.gguf`).
+The `model` field is accepted but ignored; the server uses whichever model is loaded. The actual model name is returned in the response (e.g. `Qwen3.8-27B-Q8_0.gguf`).
 
-**Context window:** 32,768 tokens per request (single-slot deployment).
+**Context window:** 262,144 tokens per request (single-slot deployment).
+
+**Reasoning:** the loaded model is a hybrid thinking/instruct model. The server defaults to `reasoning_effort: medium`. For `/v1/chat/completions` (not `/v1/responses`), you can override this per request with a top-level `reasoning_effort` field (`none`, `low`, `medium`, `high`) - it is forwarded to the model unmodified.
 
 ## Responses API (text profile)
 
@@ -55,7 +57,7 @@ The loaded model is a reasoning model. Responses include a non-standard `reasoni
       "reasoning_content": "The user says: \"Say hello.\" ..."
     }
   }],
-  "model": "gpt-oss-20b-mxfp4.gguf",
+  "model": "Qwen3.8-27B-Q8_0.gguf",
   "usage": {
     "prompt_tokens": 70,
     "completion_tokens": 46,

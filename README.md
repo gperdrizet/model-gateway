@@ -13,9 +13,7 @@ An authenticated, metered API gateway for LLM inference.
 
 ## Documentation
 
-Full documentation is published at:
-
-https://gperdrizet.github.io/model-gateway/
+Full documentation: https://gperdrizet.github.io/promptly
 
 ## How it works
 
@@ -131,14 +129,16 @@ Unsupported features are rejected with a clear `400` error instead of being sile
 
 ### Model name and response format
 
-The `model` field in your request is accepted but ignored; the server always uses whichever model is currently loaded. The current deployed backend for this repository is `gpt-oss-20b-mxfp4.gguf` with a 32,768-token context window and 1 slot. You can query the current model name with:
+The `model` field in your request is accepted but ignored; the server always uses whichever model is currently loaded. The current deployed backend for this repository is `Qwen3.8-27B-Q8_0.gguf` with a 262,144-token context window and 1 slot. You can query the current model name with:
 
 ```bash
 curl https://promptlyapi.com/v1/models \
   -H "Authorization: Bearer sk-your-key-here"
 ```
 
-The currently loaded model is a reasoning model. Responses include a non-standard `reasoning_content` field alongside the standard `content` field:
+The currently loaded model is a hybrid thinking/instruct model; requests default to `reasoning_effort: medium` server-side. For `/v1/chat/completions`, you can override this per request by including a `reasoning_effort` field (`none`, `low`, `medium`, or `high`) in your request body - it is forwarded to the model as-is. The `/v1/responses` profile does not currently forward this field.
+
+Responses include a non-standard `reasoning_content` field alongside the standard `content` field:
 
 ```json
 {

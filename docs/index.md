@@ -32,9 +32,10 @@ Authorization: Bearer sk-<your-key>
 
 ## Current deployment
 
-- Model: `gpt-oss-20b-mxfp4.gguf`
-- Context window: 32,768 tokens
+- Model: `Qwen3.8-27B-Q8_0.gguf`
+- Context window: 262,144 tokens
 - Slots: 1
+- Default reasoning effort: `medium` (overridable per request on `/v1/chat/completions` via a `reasoning_effort` field)
 
 ## Example use cases
 
