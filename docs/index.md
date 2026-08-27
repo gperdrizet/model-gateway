@@ -40,5 +40,9 @@ Authorization: Bearer sk-<your-key>
 ## Example use cases
 
 - [Using Zed with Promptly](zed-coding-agent.md): set up the Zed editor's AI assistant to use Promptly as its backend.
+- [Using Cline with Promptly](cline.md): configure the Cline autonomous coding agent extension for VS Code.
+- [Using GitHub Copilot Chat with Promptly](copilot-vscode.md): add Promptly as a Bring Your Own Key model in VS Code's Copilot Chat.
+- [Using OpenClaw with Promptly](openclaw.md): point your OpenClaw personal assistant at Promptly.
+- [Using n8n with Promptly](n8n.md): call Promptly from an n8n workflow.
 
 Continue with the API quickstart for copy-paste examples.
