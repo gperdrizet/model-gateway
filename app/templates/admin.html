@@ -82,8 +82,15 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Admin</h1>
-  <p class="sub">model-gateway · {{ user_count }} users · logged in via ADMIN_KEY</p>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+    <div>
+      <h1>Admin</h1>
+      <p class="sub">model-gateway · {{ user_count }} users</p>
+    </div>
+    <form method="post" action="/admin/logout">
+      <button type="submit" class="btn btn-ghost">Log out</button>
+    </form>
+  </div>
 
   {% if flash %}
   <div class="flash {{ flash_type }}">{{ flash }}</div>
@@ -167,14 +174,12 @@
             <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
               <!-- Adjust tokens -->
               <form method="post" action="/admin/adjust" class="adjust-form">
-                <input type="hidden" name="key" value="{{ admin_key }}">
                 <input type="hidden" name="user_id" value="{{ u.id }}">
                 <input type="number" name="delta" placeholder="±tokens" step="100000">
                 <button type="submit" class="btn btn-green">Adjust</button>
               </form>
               <!-- Delete -->
               <form method="post" action="/admin/delete" onsubmit="return confirm('Delete {{ u.email }}?')">
-                <input type="hidden" name="key" value="{{ admin_key }}">
                 <input type="hidden" name="user_id" value="{{ u.id }}">
                 <button type="submit" class="btn btn-danger">Delete</button>
               </form>
@@ -190,7 +195,6 @@
   <div style="background:#1e293b;border-radius:10px;padding:20px 24px;">
     <p style="margin:0 0 12px;font-weight:600;font-size:0.9rem;">Add new trial grant</p>
     <form method="post" action="/admin/grant" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
-      <input type="hidden" name="key" value="{{ admin_key }}">
       <div>
         <label style="font-size:0.8rem;color:#94a3b8;display:block;margin-bottom:4px">Email</label>
         <input type="email" name="email" required placeholder="user@example.com"

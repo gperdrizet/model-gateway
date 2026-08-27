@@ -82,7 +82,7 @@
     {% if error %}
     <div class="error">{{ error }}</div>
     {% endif %}
-    <form method="get" action="/admin">
+    <form method="post" action="/admin/login">
       <label for="key">Admin key</label>
       <input type="password" id="key" name="key" autofocus autocomplete="off">
       <button type="submit">Continue</button>

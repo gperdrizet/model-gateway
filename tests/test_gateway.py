@@ -282,23 +282,52 @@ async def test_dashboard_bad_key_redirects(client: AsyncClient, _db_session):
 # --- Admin panel ---
 
 async def test_admin_bad_key_forbidden(client: AsyncClient, _db_session):
-    '''Admin panel returns 403 when the wrong admin key is supplied.'''
+    '''Admin login rejects an incorrect admin key.'''
 
-    r = await client.get('/admin?key=wrong')
+    r = await client.post('/admin/login', data={'key': 'wrong'})
 
     assert r.status_code == 403
 
 
 async def test_admin_valid_key(client: AsyncClient, _db_session):
-    '''Admin panel returns 200 and renders the Admin heading for a valid key.'''
+    '''Admin login establishes a session, and the dashboard renders for it.'''
 
     import os
 
     admin_key = os.environ['ADMIN_KEY']
-    r = await client.get(f'/admin?key={admin_key}')
+    login_r = await client.post('/admin/login', data={'key': admin_key}, follow_redirects=False)
+
+    assert login_r.status_code == 303
+    assert 'admin_session' in login_r.cookies
+
+    r = await client.get('/admin')
 
     assert r.status_code == 200
     assert b'Admin' in r.content
+
+
+async def test_admin_no_session_shows_login(client: AsyncClient, _db_session):
+    '''Admin panel without a session cookie renders the login form, not the dashboard.'''
+
+    r = await client.get('/admin')
+
+    assert r.status_code == 200
+    assert b'Admin key' in r.content
+
+
+async def test_admin_logout_revokes_session(client: AsyncClient, _db_session):
+    '''After logout, the admin panel no longer renders for the old session cookie.'''
+
+    import os
+
+    admin_key = os.environ['ADMIN_KEY']
+    await client.post('/admin/login', data={'key': admin_key})
+    await client.post('/admin/logout')
+
+    r = await client.get('/admin')
+
+    assert r.status_code == 200
+    assert b'Admin key' in r.content
 
 
 async def test_admin_adjust_tokens(client: AsyncClient, registered_user):
@@ -307,9 +336,10 @@ async def test_admin_adjust_tokens(client: AsyncClient, registered_user):
     import os
 
     admin_key = os.environ['ADMIN_KEY']
+    await client.post('/admin/login', data={'key': admin_key})
     r = await client.post(
         '/admin/adjust',
-        data={'key': admin_key, 'user_id': registered_user['id'], 'delta': '1000000'},
+        data={'user_id': registered_user['id'], 'delta': '1000000'},
         follow_redirects=False,
     )
 
@@ -332,10 +362,10 @@ async def test_admin_grant_trial(client: AsyncClient, registered_user):
     import os
 
     admin_key = os.environ['ADMIN_KEY']
+    await client.post('/admin/login', data={'key': admin_key})
     r = await client.post(
         '/admin/grant',
         data={
-            'key': admin_key,
             'email': registered_user['email'],
             'tokens': '100000',
             'days': '7',
@@ -352,9 +382,10 @@ async def test_admin_delete_user(client: AsyncClient, registered_user):
     import os
 
     admin_key = os.environ['ADMIN_KEY']
+    await client.post('/admin/login', data={'key': admin_key})
     r = await client.post(
         '/admin/delete',
-        data={'key': admin_key, 'user_id': registered_user['id']},
+        data={'user_id': registered_user['id']},
         follow_redirects=False,
     )
 
