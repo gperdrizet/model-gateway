@@ -22,5 +22,8 @@ nav:
   - Overview: index.md
   - API quickstart: api-quickstart.md
   - Responses API profile: responses-api-profile.md
-  - Zed coding agent: zed-coding-agent.md
+  - Using Zed with Promptly: zed-coding-agent.md
+  - Using Cline with Promptly: cline.md
+  - Using GitHub Copilot Chat with Promptly: copilot-vscode.md
+  - Using OpenClaw with Promptly: openclaw.md
   - Operations: operations.md

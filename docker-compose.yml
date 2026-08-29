@@ -21,6 +21,7 @@ services:
     restart: unless-stopped
     ports:
       - "${GATEWAY_BIND:-0.0.0.0}:${GATEWAY_PORT:-8503}:8503"
+      - "${ADMIN_BIND_HOST:-127.0.0.1}:${ADMIN_PORT:-8507}:8503"
     environment:
       DATABASE_URL: postgresql+asyncpg://gateway:${POSTGRES_PASSWORD}@db:5432/gateway
       LLAMA_BASE_URL: ${LLAMA_BASE_URL}
@@ -37,6 +38,7 @@ services:
       TRIAL_EXPIRY_DAYS: ${TRIAL_EXPIRY_DAYS:-7}
       BASE_URL: ${BASE_URL}
       ADMIN_KEY: ${ADMIN_KEY}
+      TRUST_PROXY_HEADERS: ${TRUST_PROXY_HEADERS:-true}
     extra_hosts:
       host-gateway: host-gateway
     depends_on:

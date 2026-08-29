@@ -1,4 +1,4 @@
-# model-gateway
+# Promptly API
 
 [![Tests](https://github.com/gperdrizet/model-gateway/actions/workflows/test.yml/badge.svg)](https://github.com/gperdrizet/model-gateway/actions/workflows/test.yml)
 [![Deploy Staging](https://github.com/gperdrizet/model-gateway/actions/workflows/deploy-staging.yml/badge.svg)](https://github.com/gperdrizet/model-gateway/actions/workflows/deploy-staging.yml)
@@ -13,16 +13,14 @@ An authenticated, metered API gateway for LLM inference.
 
 ## Documentation
 
-Full documentation is published at:
-
-https://gperdrizet.github.io/model-gateway/
+Full documentation: https://gperdrizet.github.io/promptly
 
 ## How it works
 
-- Users register at **[https://promptlyapi.com](https://promptlyapi.com)** and receive a trial allocation (100k tokens, 7 days)
+- Users register at **[https://promptlyapi.com](https://promptlyapi.com)** and receive a trial allocation (1M tokens, 7 days)
 - API calls are made to `https://promptlyapi.com/v1` with a bearer token
 - Each request deducts tokens from the user's balance; requests are rejected with 402 when exhausted
-- Users can top up via Stripe (card) or BTCPay Server (Bitcoin)
+- Top up via Stripe (card) or BTCPay Server (Bitcoin) is planned but not yet available to users; the dashboard shows disabled buttons for this in the meantime
 - All usage is recorded for metering and display on the dashboard
 
 ## Stack
@@ -38,7 +36,7 @@ https://gperdrizet.github.io/model-gateway/
 
 Go to **[https://promptlyapi.com](https://promptlyapi.com)** and click **Create an account**. Enter your email address and your API key will arrive by email within a few seconds.
 
-Your account starts with a **free trial: 100,000 tokens valid for 7 days**.
+Your account starts with a **free trial: 1,000,000 tokens valid for 7 days**.
 
 > **Lost your key?** Go back to [https://promptlyapi.com/register](https://promptlyapi.com/register) and enter the same email address. A new key will be issued and sent to you; your token balance is preserved, but the old key is immediately invalidated.
 
@@ -101,7 +99,7 @@ Go to **[https://promptlyapi.com](https://promptlyapi.com)**, enter your API key
 
 ### 4. Top up
 
-When your trial runs out, top up via **Stripe** (card) or **BTCPay Server** (Bitcoin) from the dashboard. Token packs are charged at cost.
+**Not yet available.** Top-up via **Stripe** (card) or **BTCPay Server** (Bitcoin) is planned; the dashboard shows disabled buttons for it as a preview. Once your trial runs out, wait for top-up to launch or contact the operator directly.
 
 ### API notes
 
@@ -131,14 +129,16 @@ Unsupported features are rejected with a clear `400` error instead of being sile
 
 ### Model name and response format
 
-The `model` field in your request is accepted but ignored; the server always uses whichever model is currently loaded. The current deployed backend for this repository is `gpt-oss-20b-mxfp4.gguf` with a 32,768-token context window and 1 slot. You can query the current model name with:
+The `model` field in your request is accepted but ignored; the server always uses whichever model is currently loaded. The current deployed backend for this repository is `Qwen3.8-27B-Q8_0.gguf` with a 262,144-token context window and 1 slot. You can query the current model name with:
 
 ```bash
 curl https://promptlyapi.com/v1/models \
   -H "Authorization: Bearer sk-your-key-here"
 ```
 
-The currently loaded model is a reasoning model. Responses include a non-standard `reasoning_content` field alongside the standard `content` field:
+The currently loaded model is a hybrid thinking/instruct model; requests default to `reasoning_effort: medium` server-side. For `/v1/chat/completions`, you can override this per request by including a `reasoning_effort` field (`none`, `low`, `medium`, or `high`) in your request body - it is forwarded to the model as-is. The `/v1/responses` profile does not currently forward this field.
+
+Responses include a non-standard `reasoning_content` field alongside the standard `content` field:
 
 ```json
 {
@@ -434,6 +434,8 @@ WHERE user_id = (SELECT id FROM users WHERE email = 'user@example.com');
 ```
 
 ## Billing
+
+> **Status: not yet launched.** The backend, webhooks, and dashboard buttons for both payment methods exist, but the buttons are disabled in the UI until Stripe is out of test mode and BTCPay Server is deployed for real use.
 
 ### Stripe
 
