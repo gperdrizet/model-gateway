@@ -1,4 +1,4 @@
-# model-gateway
+# Promptly API
 
 [![Tests](https://github.com/gperdrizet/model-gateway/actions/workflows/test.yml/badge.svg)](https://github.com/gperdrizet/model-gateway/actions/workflows/test.yml)
 [![Deploy Staging](https://github.com/gperdrizet/model-gateway/actions/workflows/deploy-staging.yml/badge.svg)](https://github.com/gperdrizet/model-gateway/actions/workflows/deploy-staging.yml)
@@ -13,14 +13,14 @@ An authenticated, metered API gateway for LLM inference.
 
 ## Documentation
 
-Full documentation: https://gperdrizet.github.io/model-gateway/
+Full documentation: https://gperdrizet.github.io/promptly
 
 ## How it works
 
 - Users register at **[https://promptlyapi.com](https://promptlyapi.com)** and receive a trial allocation (1M tokens, 7 days)
 - API calls are made to `https://promptlyapi.com/v1` with a bearer token
 - Each request deducts tokens from the user's balance; requests are rejected with 402 when exhausted
-- Users can top up via Stripe (card) or BTCPay Server (Bitcoin)
+- Top up via Stripe (card) or BTCPay Server (Bitcoin) is planned but not yet available to users; the dashboard shows disabled buttons for this in the meantime
 - All usage is recorded for metering and display on the dashboard
 
 ## Stack
@@ -99,7 +99,7 @@ Go to **[https://promptlyapi.com](https://promptlyapi.com)**, enter your API key
 
 ### 4. Top up
 
-When your trial runs out, top up via **Stripe** (card) or **BTCPay Server** (Bitcoin) from the dashboard. Token packs are charged at cost.
+**Not yet available.** Top-up via **Stripe** (card) or **BTCPay Server** (Bitcoin) is planned; the dashboard shows disabled buttons for it as a preview. Once your trial runs out, wait for top-up to launch or contact the operator directly.
 
 ### API notes
 
@@ -434,6 +434,8 @@ WHERE user_id = (SELECT id FROM users WHERE email = 'user@example.com');
 ```
 
 ## Billing
+
+> **Status: not yet launched.** The backend, webhooks, and dashboard buttons for both payment methods exist, but the buttons are disabled in the UI until Stripe is out of test mode and BTCPay Server is deployed for real use.
 
 ### Stripe
 

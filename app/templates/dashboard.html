@@ -105,7 +105,14 @@
       transition: background 0.15s;
     }
     .pack-btn:hover { background: #2563eb; }
+    .pack-btn:disabled {
+      background: #e5e7eb;
+      color: #9ca3af;
+      cursor: not-allowed;
+    }
+    .pack-btn:disabled:hover { background: #e5e7eb; }
     .pay-methods { font-size: 0.8rem; color: #aaa; margin-top: 12px; }
+    .coming-soon { font-size: 0.75rem; color: #aaa; margin-top: 8px; }
 
     /* --- key display --- */
     .key-wrap {
@@ -215,13 +222,14 @@
         <form method="get" action="/checkout" style="margin:0;display:flex;gap:6px;flex-wrap:wrap">
           <input type="hidden" name="pack" value="{{ pack.id }}">
           <input type="hidden" name="key" value="{{ api_key }}">
-          <button type="submit" name="method" value="stripe" class="pack-btn" style="flex:1">Card</button>
-          <button type="submit" name="method" value="btcpay" class="pack-btn" style="flex:1;background:#f7931a;color:#fff">₿ BTC</button>
+          <button type="submit" name="method" value="stripe" class="pack-btn" style="flex:1" disabled title="Coming soon">Card</button>
+          <button type="submit" name="method" value="btcpay" class="pack-btn" style="flex:1;background:#f7931a;color:#fff" disabled title="Coming soon">₿ BTC</button>
         </form>
       </div>
       {% endfor %}
     </div>
     <p class="pay-methods">Accepts card (Stripe) · Bitcoin · Ethereum</p>
+    <p class="coming-soon">Top-ups are coming soon &mdash; not yet available.</p>
   </div>
 
   {# API key display #}

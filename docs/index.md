@@ -7,7 +7,7 @@ Promptly is an authenticated, metered API gateway for LLM inference.
 - Email-based registration and API key delivery
 - Token-metered access to inference
 - User dashboard with usage and balance
-- Stripe and BTCPay top-up flows
+- Stripe and BTCPay top-up flows (planned; not yet available to users)
 - OpenAI-compatible API surface for chat completions
 - Text-focused Responses API compatibility profile
 
