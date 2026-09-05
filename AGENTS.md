@@ -20,11 +20,11 @@ curl https://promptlyapi.com/v1/chat/completions \
   }'
 ```
 
-The `model` field is accepted but ignored; the server uses whichever model is loaded. The actual model name is returned in the response (e.g. `Qwen3.8-27B-Q8_0.gguf`).
+The `model` field is accepted but ignored; the server uses whichever model is loaded. The actual model name is returned in the response - query `/v1/models` for the current one.
 
-**Context window:** 262,144 tokens per request (single-slot deployment).
+**Context window:** large (well over 100k tokens); the effective limit tracks the current deployment, so query `/v1/models` rather than hardcoding a value.
 
-**Reasoning:** the loaded model is a hybrid thinking/instruct model. The server defaults to `reasoning_effort: medium`. For `/v1/chat/completions` (not `/v1/responses`), you can override this per request with a top-level `reasoning_effort` field (`none`, `low`, `medium`, `high`) - it is forwarded to the model unmodified.
+**Reasoning:** the loaded model thinks by default and returns its chain-of-thought in a non-standard `reasoning_content` field (ignore it; read `content`). Thinking-control fields are forwarded to the model unchanged - the current Qwen model disables thinking with `chat_template_kwargs: {"enable_thinking": false}`; a `reasoning_effort` field only affects models that support it (e.g. gpt-oss) and is ignored otherwise.
 
 ## Responses API (text profile)
 
@@ -57,7 +57,7 @@ The loaded model is a reasoning model. Responses include a non-standard `reasoni
       "reasoning_content": "The user says: \"Say hello.\" ..."
     }
   }],
-  "model": "Qwen3.8-27B-Q8_0.gguf",
+  "model": "Qwen3.8-27B-UD-Q4_K_M.gguf",
   "usage": {
     "prompt_tokens": 70,
     "completion_tokens": 46,
