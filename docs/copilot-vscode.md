@@ -52,7 +52,7 @@ Promptly ignores whatever `id`/model name you send and always serves whichever m
 
 ## Reasoning
 
-The current model (Qwen3) is a reasoning model that thinks by default; its chain-of-thought comes back in a non-standard `reasoning_content` field and bills the same as regular output tokens. VS Code's **Thinking Effort** menu maps to `reasoning_effort`, which this model ignores - it's forwarded but has no effect - so `supportsReasoningEffort` is intentionally left out of the config above. To turn thinking off, pass `chat_template_kwargs: {"enable_thinking": false}` if your client can send extra body fields.
+The current model (Qwen3) is a reasoning model that thinks by default; its chain-of-thought comes back in a non-standard `reasoning_content` field and bills the same as regular output tokens. VS Code's **Thinking Effort** menu maps to a top-level `reasoning_effort` field, which this model ignores - it's forwarded but has no effect - so `supportsReasoningEffort` is intentionally left out of the config above. If your client can send extra body fields, set reasoning depth with `chat_template_kwargs: {"reasoning_effort": "low|medium|high|xhigh"}`, or turn thinking off with `chat_template_kwargs: {"enable_thinking": false}`.
 
 ## Tool calling caveat
 

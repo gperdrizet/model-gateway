@@ -136,7 +136,7 @@ curl https://promptlyapi.com/v1/models \
   -H "Authorization: Bearer sk-your-key-here"
 ```
 
-The currently loaded model is a reasoning model that thinks by default. How you control thinking is model-specific and forwarded to the backend unchanged: the current Qwen model disables thinking via `chat_template_kwargs: {"enable_thinking": false}`, while harmony-style models (e.g. gpt-oss) use a `reasoning_effort` field. Control fields a model doesn't recognize are ignored. Thinking output appears in the `reasoning_content` field (below) and bills as normal output tokens.
+The currently loaded model is a reasoning model that thinks by default. How you control thinking is model-specific and forwarded to the backend unchanged: the current Qwen model disables thinking via `chat_template_kwargs: {"enable_thinking": false}` and sets reasoning depth via `chat_template_kwargs: {"reasoning_effort": "low|medium|high|xhigh"}`, while harmony-style models (e.g. gpt-oss) use a top-level `reasoning_effort` field. Control fields a model doesn't recognize are ignored - the current Qwen model ignores the top-level `reasoning_effort` field, so use the `chat_template_kwargs` forms above. Thinking output appears in the `reasoning_content` field (below) and bills as normal output tokens.
 
 Responses include a non-standard `reasoning_content` field alongside the standard `content` field:
 

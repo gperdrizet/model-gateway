@@ -24,7 +24,7 @@ The `model` field is accepted but ignored; the server uses whichever model is lo
 
 **Context window:** large (well over 100k tokens); the effective limit tracks the current deployment, so query `/v1/models` rather than hardcoding a value.
 
-**Reasoning:** the loaded model thinks by default and returns its chain-of-thought in a non-standard `reasoning_content` field (ignore it; read `content`). Thinking-control fields are forwarded to the model unchanged - the current Qwen model disables thinking with `chat_template_kwargs: {"enable_thinking": false}`; a `reasoning_effort` field only affects models that support it (e.g. gpt-oss) and is ignored otherwise.
+**Reasoning:** the loaded model thinks by default and returns its chain-of-thought in a non-standard `reasoning_content` field (ignore it; read `content`). Thinking-control fields are forwarded to the model unchanged - the current Qwen model disables thinking with `chat_template_kwargs: {"enable_thinking": false}` and sets reasoning depth with `chat_template_kwargs: {"reasoning_effort": "low|medium|high|xhigh"}` (`none` errors - use `enable_thinking: false` to turn thinking off). A top-level `reasoning_effort` field is ignored by the current Qwen model - only the `chat_template_kwargs` form takes effect; harmony-style models (e.g. gpt-oss) use the top-level field instead.
 
 ## Responses API (text profile)
 

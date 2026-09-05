@@ -38,5 +38,5 @@ Click **Verify** (or equivalent) to confirm the connection works before starting
 ## Notes
 
 - Promptly ignores whatever `model` field you send and always serves whichever model is currently loaded, so the `default` model ID above will keep working if the backend changes.
-- Cline's OpenAI Compatible provider forwards your request body largely as-is, so extra fields like `chat_template_kwargs` reach the backend. (`reasoning_effort` is forwarded too, but the current Qwen model ignores it - use `enable_thinking` as above to control thinking.)
+- Cline's OpenAI Compatible provider forwards your request body largely as-is, so extra fields like `chat_template_kwargs` reach the backend. (A top-level `reasoning_effort` field is ignored by the current Qwen model; to set reasoning depth pass `chat_template_kwargs: {"reasoning_effort": "low|medium|high|xhigh"}`, and use `enable_thinking` as above to turn thinking off.)
 - Check your token balance any time at `https://promptlyapi.com/dashboard?key=sk-your-key-here`.

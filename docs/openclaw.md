@@ -77,7 +77,7 @@ openclaw models set promptly/default
 
 ## Controlling reasoning
 
-The current Qwen model thinks by default. To disable thinking you'd pass `chat_template_kwargs: {"enable_thinking": false}` - whether OpenClaw's generic `openai-completions` path forwards extra body fields like `params.chat_template_kwargs` depends on the provider, so check OpenClaw's [model providers reference](https://docs.openclaw.ai/concepts/model-providers). (`reasoning_effort` is forwarded but ignored by this model.) Thinking isn't required for normal use.
+The current Qwen model thinks by default. To disable thinking you'd pass `chat_template_kwargs: {"enable_thinking": false}`, or set reasoning depth with `chat_template_kwargs: {"reasoning_effort": "low|medium|high|xhigh"}` - whether OpenClaw's generic `openai-completions` path forwards extra body fields like `params.chat_template_kwargs` depends on the provider, so check OpenClaw's [model providers reference](https://docs.openclaw.ai/concepts/model-providers). (A top-level `reasoning_effort` field is ignored by this model; only the `chat_template_kwargs` form takes effect.) Thinking isn't required for normal use.
 
 ## Notes
 
