@@ -58,7 +58,7 @@ curl https://promptlyapi.com/v1/models \
 For normal editor-driven coding work (not heavy agentic/batch use), a reasonable starting point is:
 
 - Low temperature (e.g. `0.2`) for more predictable edits and completions
-- Leave thinking on for most tasks; for faster, cheaper responses on simple edits, disable it with `chat_template_kwargs: {"enable_thinking": false}` if Zed lets you pass extra request fields (`reasoning_effort` is forwarded but ignored by the current model)
+- Leave thinking on for most tasks; for faster, cheaper responses on simple edits, disable it with `chat_template_kwargs: {"enable_thinking": false}` if Zed lets you pass extra request fields, or set reasoning depth with `chat_template_kwargs: {"reasoning_effort": "low|medium|high|xhigh"}` (a top-level `reasoning_effort` field is ignored by the current model)
 - No need to change `max_tokens`/context settings from the default above unless you're working with unusually large files or long conversations
 
 ## Notes
