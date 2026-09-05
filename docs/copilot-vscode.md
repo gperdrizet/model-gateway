@@ -28,15 +28,13 @@ In VS Code, open the model picker in the Chat view and select **Manage Language 
     "models": [
       {
         "id": "default",
-        "name": "Promptly (Qwen3.8-27B)",
+        "name": "Promptly",
         "url": "https://promptlyapi.com/v1/chat/completions",
         "toolCalling": true,
         "vision": false,
-        "contextWindow": 262144,
+        "contextWindow": 65536,
         "maxOutputTokens": 8192,
         "thinking": true,
-        "supportsReasoningEffort": ["none", "low", "medium", "high"],
-        "reasoningEffortFormat": "chat-completions",
         "modelOptions": {
           "temperature": 0.2
         }
@@ -52,11 +50,9 @@ Promptly ignores whatever `id`/model name you send and always serves whichever m
 
 > If the model doesn't appear right away, restart VS Code.
 
-## Reasoning effort
+## Reasoning
 
-Because `supportsReasoningEffort` is set above, VS Code shows a **Thinking Effort** submenu next to the model in the picker (`None`/`Low`/`Medium`/`High`). This maps to Promptly's `reasoning_effort` request field, which the server forwards to the model as-is. If you don't touch it, requests use Promptly's server-side default (`medium`).
-
-Higher effort levels produce more thinking tokens, which count against your Promptly token balance the same as regular output - only raise it for genuinely complex tasks.
+The current model (Qwen3) is a reasoning model that thinks by default; its chain-of-thought comes back in a non-standard `reasoning_content` field and bills the same as regular output tokens. VS Code's **Thinking Effort** menu maps to `reasoning_effort`, which this model ignores - it's forwarded but has no effect - so `supportsReasoningEffort` is intentionally left out of the config above. To turn thinking off, pass `chat_template_kwargs: {"enable_thinking": false}` if your client can send extra body fields.
 
 ## Tool calling caveat
 

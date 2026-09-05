@@ -23,7 +23,7 @@ Open Cline's settings (gear icon in the Cline panel) and set:
 
 Cline's OpenAI Compatible provider lets you fill in model metadata manually since it has no way to discover it automatically. Set:
 
-- **Context Window:** `262144`
+- **Context Window:** `65536`
 - **Max Output Tokens:** a reasonable ceiling for your use, e.g. `8192`
 - **Image Support:** off (the current backend is text-only)
 - **Computer Use / tool calling:** on, if you want Cline's agentic file-editing and command features to work
@@ -32,12 +32,11 @@ Click **Verify** (or equivalent) to confirm the connection works before starting
 
 ## What you're actually talking to
 
-- **Model:** `Qwen3.8-27B-Q8_0.gguf`, a hybrid thinking/instruct model
-- **Context window:** 262,144 tokens
-- **Reasoning:** the server defaults to `reasoning_effort: medium`; thinking tokens count against your balance the same as regular output tokens
+- **Model:** whichever model is currently loaded (query `/v1/models`); currently a Qwen3 reasoning model
+- **Reasoning:** the model thinks by default and returns its chain-of-thought in `reasoning_content`; those thinking tokens bill the same as regular output. Disable thinking by sending `chat_template_kwargs: {"enable_thinking": false}`.
 
 ## Notes
 
 - Promptly ignores whatever `model` field you send and always serves whichever model is currently loaded, so the `default` model ID above will keep working if the backend changes.
-- Cline's OpenAI Compatible provider forwards your request body largely as-is, so you can add a top-level `reasoning_effort` override (`none`, `low`, `medium`, `high`) if Cline's UI exposes a way to pass extra request fields; otherwise the server default applies.
+- Cline's OpenAI Compatible provider forwards your request body largely as-is, so extra fields like `chat_template_kwargs` reach the backend. (`reasoning_effort` is forwarded too, but the current Qwen model ignores it - use `enable_thinking` as above to control thinking.)
 - Check your token balance any time at `https://promptlyapi.com/dashboard?key=sk-your-key-here`.

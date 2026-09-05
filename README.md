@@ -129,14 +129,14 @@ Unsupported features are rejected with a clear `400` error instead of being sile
 
 ### Model name and response format
 
-The `model` field in your request is accepted but ignored; the server always uses whichever model is currently loaded. The current deployed backend for this repository is `Qwen3.8-27B-Q8_0.gguf` with a 262,144-token context window and 1 slot. You can query the current model name with:
+The `model` field in your request is accepted but ignored; the server always uses whichever model is currently loaded. The deployed model and its runtime limits change as the backend is tuned, so query them live rather than hardcoding - the current model name is returned by:
 
 ```bash
 curl https://promptlyapi.com/v1/models \
   -H "Authorization: Bearer sk-your-key-here"
 ```
 
-The currently loaded model is a hybrid thinking/instruct model; requests default to `reasoning_effort: medium` server-side. For `/v1/chat/completions`, you can override this per request by including a `reasoning_effort` field (`none`, `low`, `medium`, or `high`) in your request body - it is forwarded to the model as-is. The `/v1/responses` profile does not currently forward this field.
+The currently loaded model is a reasoning model that thinks by default. How you control thinking is model-specific and forwarded to the backend unchanged: the current Qwen model disables thinking via `chat_template_kwargs: {"enable_thinking": false}`, while harmony-style models (e.g. gpt-oss) use a `reasoning_effort` field. Control fields a model doesn't recognize are ignored. Thinking output appears in the `reasoning_content` field (below) and bills as normal output tokens.
 
 Responses include a non-standard `reasoning_content` field alongside the standard `content` field:
 

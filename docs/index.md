@@ -32,10 +32,10 @@ Authorization: Bearer sk-<your-key>
 
 ## Current deployment
 
-- Model: `Qwen3.8-27B-Q8_0.gguf`
-- Context window: 262,144 tokens
-- Slots: 1
-- Default reasoning effort: `medium` (overridable per request on `/v1/chat/completions` via a `reasoning_effort` field)
+The deployed model and its runtime limits (context window, slots) change as the backend is tuned, so query them live rather than relying on a fixed value:
+
+- Current model name: `GET /v1/models`
+- Reasoning: the model thinks by default and returns its chain-of-thought in a non-standard `reasoning_content` field. On the current Qwen model, disable thinking with `chat_template_kwargs: {"enable_thinking": false}`.
 
 ## Example use cases
 

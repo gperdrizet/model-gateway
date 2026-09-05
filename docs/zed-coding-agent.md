@@ -24,7 +24,7 @@ In Zed, open **Settings** (`Cmd+,` / `Ctrl+,`) and add an OpenAI-compatible prov
           {
             "name": "default",
             "display_name": "Promptly",
-            "max_tokens": 262144
+            "max_tokens": 65536
           }
         ]
       }
@@ -43,9 +43,8 @@ Promptly ignores whatever model name you send and always serves whichever model 
 
 ## What you're actually talking to
 
-- **Model:** `Qwen3.8-27B-Q8_0.gguf`, a hybrid thinking/instruct model
-- **Context window:** 262,144 tokens
-- **Reasoning:** the server defaults to `reasoning_effort: medium`; thinking tokens count against your balance the same as regular output tokens
+- **Model:** whichever model is currently loaded (query `/v1/models`); currently a Qwen3 reasoning model
+- **Reasoning:** the model thinks by default and returns its chain-of-thought in `reasoning_content`; those tokens bill the same as regular output. Disable thinking with `chat_template_kwargs: {"enable_thinking": false}`.
 
 You can check the currently loaded model at any time:
 
@@ -59,7 +58,7 @@ curl https://promptlyapi.com/v1/models \
 For normal editor-driven coding work (not heavy agentic/batch use), a reasonable starting point is:
 
 - Low temperature (e.g. `0.2`) for more predictable edits and completions
-- Default `reasoning_effort` (`medium`) for most tasks; if you want faster, cheaper responses for simple edits, override it to `low` or `none` per request; for harder problems, `high`
+- Leave thinking on for most tasks; for faster, cheaper responses on simple edits, disable it with `chat_template_kwargs: {"enable_thinking": false}` if Zed lets you pass extra request fields (`reasoning_effort` is forwarded but ignored by the current model)
 - No need to change `max_tokens`/context settings from the default above unless you're working with unusually large files or long conversations
 
 ## Notes

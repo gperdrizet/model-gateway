@@ -47,9 +47,9 @@ Promptly isn't one of OpenClaw's built-in provider plugins, but OpenClaw support
         models: [
           {
             id: "default",
-            name: "Promptly (Qwen3.8-27B)",
+            name: "Promptly",
             reasoning: true,
-            contextWindow: 262144,
+            contextWindow: 65536,
             maxTokens: 8192,
           },
         ],
@@ -72,13 +72,12 @@ openclaw models set promptly/default
 
 ## What you're actually talking to
 
-- **Model:** `Qwen3.8-27B-Q8_0.gguf`, a hybrid thinking/instruct model
-- **Context window:** 262,144 tokens
-- **Reasoning:** Promptly defaults to `reasoning_effort: medium` server-side; thinking tokens count against your balance the same as output tokens
+- **Model:** whichever model is currently loaded (query `/v1/models`); currently a Qwen3 reasoning model
+- **Reasoning:** the model thinks by default and returns its chain-of-thought in `reasoning_content`; those tokens bill the same as output. Disable thinking with `chat_template_kwargs: {"enable_thinking": false}`.
 
-## Reasoning effort
+## Controlling reasoning
 
-Promptly's server default (`medium`) applies automatically. Whether you can override `reasoning_effort` per request from OpenClaw's side depends on whether its generic `openai-completions` provider path forwards extra body fields the way it does `params.chat_template_kwargs` for the bundled vLLM provider - check OpenClaw's [model providers reference](https://docs.openclaw.ai/concepts/model-providers) for the current behavior if you need to change this. Overriding server-side isn't necessary for normal use.
+The current Qwen model thinks by default. To disable thinking you'd pass `chat_template_kwargs: {"enable_thinking": false}` - whether OpenClaw's generic `openai-completions` path forwards extra body fields like `params.chat_template_kwargs` depends on the provider, so check OpenClaw's [model providers reference](https://docs.openclaw.ai/concepts/model-providers). (`reasoning_effort` is forwarded but ignored by this model.) Thinking isn't required for normal use.
 
 ## Notes
 
